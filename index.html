@@ -53,6 +53,22 @@ aside{background:var(--s1);border-right:1px solid var(--b1);display:flex;flex-di
 .var-btn:hover{color:var(--t2)}
 .var-btn.on{background:var(--s3);color:var(--acc);border:1px solid var(--b2)}
 .density-labels{display:flex;justify-content:space-between;font-size:11px;color:var(--t3);margin-top:2px;padding:0 1px}
+.szsec{font-size:10px;color:var(--t3);text-transform:uppercase;letter-spacing:.08em;margin:8px 0 4px}
+.szchips{display:flex;flex-wrap:wrap;gap:4px}
+.szchip{font-family:var(--mono);font-size:11px;background:var(--s3);border:1px solid var(--b1);border-radius:3px;padding:3px 7px;color:var(--t2);cursor:pointer;transition:all .12s}
+.szchip:hover{border-color:var(--acc2);color:var(--t1)}
+.szchip.off{background:transparent;border:1px dashed var(--acc2);color:var(--t3);text-decoration:line-through}
+.szchip.off:hover{border-color:var(--acc);color:var(--acc2)}
+.cfgbtn{flex:1;font-family:var(--mono);font-size:11px;background:var(--s3);border:1px solid var(--b1);border-radius:4px;padding:6px 8px;color:var(--t1);cursor:pointer;transition:all .12s}
+.cfgbtn:hover{border-color:var(--acc);color:var(--acc)}
+.cfgbtn.on{background:var(--acc);border-color:var(--acc);color:#fff}
+.palette{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:10px}
+.swatch{position:relative;width:28px;height:28px;border-radius:5px;border:1px solid var(--b2);cursor:pointer;transition:outline .1s}
+.swatch.on{outline:2px solid var(--acc);outline-offset:2px}
+.swdel{position:absolute;top:-7px;right:-7px;width:15px;height:15px;border-radius:50%;background:var(--s1);border:1px solid var(--b1);color:var(--t2);font-size:11px;line-height:13px;text-align:center;font-family:var(--sans)}
+.swdel:hover{border-color:var(--acc);color:var(--acc)}
+.curcolor{display:inline-block;width:16px;height:16px;border-radius:3px;border:1px solid var(--b2);vertical-align:-3px;margin-right:4px}
+#cvcolor{touch-action:none}
 .density-info{font-size:12px;color:var(--acc2);margin-top:6px;font-family:var(--mono)}
 .sgrid{display:grid;grid-template-columns:1fr 1fr;gap:5px}
 .sc{background:var(--bg);border:1px solid var(--b1);border-radius:4px;padding:7px 9px}
@@ -140,6 +156,14 @@ canvas{display:block}
     <div class="shint" id="hh"></div>
   </div>
   <div class="panel">
+    <div class="ptitle" style="display:flex;align-items:center;justify-content:space-between">
+      <span data-i18n="sizes">Panel sizes</span>
+      <button id="sizesClear" onclick="clearSizeExclusions()" style="font-family:var(--mono);font-size:10px;background:var(--s3);border:1px solid var(--b1);border-radius:3px;padding:2px 7px;color:var(--t2);cursor:pointer;letter-spacing:.05em;text-transform:none;display:none" data-i18n="sizesClear">clear</button>
+    </div>
+    <div style="font-size:11px;color:var(--t3);line-height:1.55;margin-bottom:6px" data-i18n="sizesHint">Click a size to exclude it — the layout will use other modules instead.</div>
+    <div id="sizeList"></div>
+  </div>
+  <div class="panel">
     <div class="ptitle" data-i18n="mountDensity">Mount density</div>
     <div class="srow" style="margin-bottom:3px">
       <label data-i18n="span">Span</label>
@@ -174,8 +198,17 @@ canvas{display:block}
       <div class="sc"><div class="sv" id="st4">—</div><div class="sl" data-i18n="brackets">Brackets</div></div>
     </div>
     <div style="font-size:11px;color:var(--t3);margin-top:7px;padding:5px 8px;background:var(--bg);border:1px solid var(--b1);border-radius:4px">
-      ⚑ <span id="st5">—</span> <span data-i18n="mountPts">mount points</span> · <span id="st6">—</span>
+      ⚑ <span id="st5">—</span> <span id="mountPtsLabel">mount points</span> · <span id="st6">—</span>
     </div>
+  </div>
+  <div class="panel">
+    <div class="ptitle" data-i18n="config">Configuration</div>
+    <div style="display:flex;gap:6px">
+      <button class="cfgbtn" onclick="exportConfig()" data-i18n="cfgExport">Export</button>
+      <button class="cfgbtn" onclick="document.getElementById('cfgFile').click()" data-i18n="cfgImport">Import</button>
+    </div>
+    <div id="cfgMsg" style="font-size:11px;color:var(--t3);line-height:1.5;margin-top:7px"></div>
+    <input type="file" id="cfgFile" accept="application/json,.json" style="display:none" onchange="importConfig(event)">
   </div>
   <div class="sc-scroll">
     <div class="panel"><div class="ptitle" data-i18n="printList">Print list</div><div id="bom"></div></div>
@@ -186,6 +219,7 @@ canvas{display:block}
     <button class="tab on" onclick="showTab('board')" data-i18n="tabBoard">Board layout</button>
     <button class="tab"    onclick="showTab('mount')" data-i18n="tabMount">Wall mounting</button>
     <button class="tab"    onclick="showTab('cat')"   data-i18n="tabCat">Parts catalog</button>
+    <button class="tab"    onclick="showTab('color')" data-i18n="tabColor">Filament colors</button>
   </div>
   <div class="view on" id="vboard">
     <div class="cw">
@@ -219,6 +253,40 @@ canvas{display:block}
     </div>
   </div>
   <div class="view" id="vcat"><div id="catc"></div></div>
+  <div class="view" id="vcolor">
+    <div class="cw" style="display:inline-block;max-width:100%">
+      <div class="ctop">
+        <span data-i18n="colorView">Filament plan</span>
+        <strong id="csz" style="margin-left:auto;color:var(--acc)"></strong>
+      </div>
+      <div class="palette" id="palette"></div>
+      <div style="display:flex;flex-wrap:wrap;gap:6px;align-items:center;margin-bottom:10px">
+        <span style="font-size:10px;color:var(--t3);text-transform:uppercase;letter-spacing:.08em" data-i18n="presets">Presets</span>
+        <button class="cfgbtn" style="flex:0 0 auto" onclick="applyColorPreset('gradient')" data-i18n="presetGradient">Gradient</button>
+        <button class="cfgbtn" style="flex:0 0 auto" onclick="applyColorPreset('rings')" data-i18n="presetRings">Rings</button>
+        <button class="cfgbtn" style="flex:0 0 auto" onclick="applyColorPreset('frame')" data-i18n="presetFrame">Frame</button>
+        <button class="cfgbtn" style="flex:0 0 auto" onclick="applyColorPreset('checker')" data-i18n="presetChecker">Checker</button>
+        <button class="cfgbtn" style="flex:0 0 auto" onclick="applyColorPreset('stripes')" data-i18n="presetStripes">Stripes</button>
+        <button class="cfgbtn" style="flex:0 0 auto" onclick="applyColorPreset('solid')" data-i18n="presetSolid">Solid</button>
+      </div>
+      <div style="display:flex;flex-wrap:wrap;gap:6px;align-items:center;margin-bottom:8px">
+        <input type="color" id="newColor" value="#e55c25" style="width:38px;height:30px;padding:1px;background:var(--s3);border:1px solid var(--b1);border-radius:4px;cursor:pointer">
+        <button class="cfgbtn" style="flex:0 0 auto" onclick="addFilamentColor()" data-i18n="addColor">Add color</button>
+        <button class="cfgbtn" id="eraseBtn" style="flex:0 0 auto" onclick="toggleErase()" data-i18n="erase">Erase</button>
+        <button class="cfgbtn" style="flex:0 0 auto" onclick="clearModuleColors()" data-i18n="clearPaint">Clear paint</button>
+        <span id="curColorWrap" style="font-family:var(--mono);font-size:11px;color:var(--t2);margin-left:auto"><span class="curcolor" id="curColor"></span><span id="curColorHex"></span></span>
+      </div>
+      <div style="font-size:11px;color:var(--t3);line-height:1.55;margin-bottom:8px" data-i18n="paintHint">Pick a filament color, then click or drag over panels to paint them.</div>
+      <canvas id="cvcolor"></canvas>
+      <div class="legrow">
+        <div class="leg"><div class="ld" style="background:var(--cf);border:1px solid var(--cb)"></div><span data-i18n="legCorner">Corner module</span></div>
+        <div class="leg"><div class="ld" style="background:var(--tf);border:1px solid var(--tb)"></div><span data-i18n="legTopbot">Top/bot module</span></div>
+        <div class="leg"><div class="ld" style="background:var(--sf);border:1px solid var(--sb)"></div><span data-i18n="legSide">Side module</span></div>
+        <div class="leg"><div class="ld" style="background:var(--df);border:1px solid var(--db)"></div><span data-i18n="legModule">Center module</span></div>
+        <div class="leg"><div class="ld" style="background:var(--mf);border:2px solid var(--mb)"></div><span data-i18n="legMount">⚑ Bracket</span></div>
+      </div>
+    </div>
+  </div>
 </main>
 </div>
 <script>
@@ -233,19 +301,46 @@ const I18N = {
     variant:'Module set',
     varHints:['Up to 160mm modules (4×4 cells). Mini print bed.','Up to 240mm modules (6×6 cells). Standard print bed.','Up to 320mm modules (8×8 cells). XL print bed.'],
     width:'Width', height:'Height', mountDensity:'Mount density',
+    sizes:'Panel sizes', sizesClear:'clear',
+    sizesHint:'Click a size to exclude it — the layout will use other modules instead. Click it again to allow it back.',
+    sizesEmpty:'No module sizes to exclude yet.',
+    szCenter:'Center', szTopbot:'Top & bottom', szSide:'Side',
+    szDisable:'Exclude this size', szEnable:'Allow this size again',
     span:'Span', dense:'Dense', sparse:'Sparse',
     vertHint:'Vertical span is stricter — sag from load.',
     total:'Total', allParts:'All parts', modules:'Modules',
     connectors:'Connectors', brackets:'Brackets', mountPts:'mount points',
+    mountPtsLabel:n=>n===1?'mount point':'mount points',
     printList:'Print list', tabBoard:'Board layout', tabMount:'Wall mounting',
+    config:'Configuration', cfgExport:'Export', cfgImport:'Import',
+    cfgExported:'Config downloaded as a JSON file.',
+    cfgImported:(w,h)=>`Config loaded: ${w}×${h} cells.`,
+    cfgErr:'Could not read this file — expected a planner config JSON.',
     tabCat:'Parts catalog', frontView:'Front view',
+    tabColor:'Filament colors', colorView:'Filament plan',
+    addColor:'Add color', erase:'Erase', clearPaint:'Clear paint',
+    paintHint:'Pick a filament color, then click or drag over panels to paint them.',
+    clearPaintConfirm:'Clear all panel colors?',
+    delColor:'Remove this color',
+    presets:'Presets', presetGradient:'Gradient', presetRings:'Rings',
+    presetFrame:'Frame', presetChecker:'Checker', presetStripes:'Stripes', presetSolid:'Solid',
     rearView:'Rear view · bracket layout',
     legCorner:'Corner module', legTopbot:'Top/bot module',
     legSide:'Side module', legModule:'Center module',
     legMount:'⚑ Bracket (mounting.3mf)', legConn:'Connector', legScrew:'Wall screw',
     legCM:'Corner mounts', legSM:'Side mounts', legTBM:'Top & bottom mounts', legMBM:'Mid board mount',
     densNames:['Very dense','Dense','Normal','Sparse','Very sparse'],
-    cells:'cells', plate:'pl.', fromFile:'from',
+    cells:'cells', plate:'pl.', fromFile:'from', mm:'mm', unitM:'m', unitCm:'cm', unitM2:'m²', unitCm2:'cm²',
+    partStd:'Module', partTopbot:'Top & bottom module', partSide:'Side module',
+    partCorner:'Corner module', partConnector:'Connector',
+    roleBracket:'bracket', roleDistConn:'dist. connector', mountingShort:'mounting',
+    shortCorner:'corner', shortSide:'side', shortTopbot:'top/bot', shortMid:'mid',
+    remove:'remove',
+    mountCorner:'Corner mounts', mountCornerDist:'Corner module distance connector',
+    mountSide:'Side mounts', mountSideDist:'Side, top & bottom module distance connector',
+    mountTopbot:'Top & bottom mounts', mountTopbotDist:'Side, top & bottom module distance connector',
+    mountMid:'Mid board mount', mountMidDist:'Mid board module distance connector',
+    connSheetsLine:(s,p)=>`${s} sheet${s>1?'s':''} of ${p} per sheet`,
     secModules:'Modules', secConn:'Connectors', secMount:'Wall mounting',
     shts:'sheets of', perSheet:'per sheet',
     shGroup:n=>`— ${n} pcs.`,
@@ -266,43 +361,87 @@ const I18N = {
   ru: {
     subtitle:'Планировщик · Модель от AdamKozakGrafika', boardSize:'Размеры доски',
     variant:'Набор модулей',
-    varHints:['Модули до 160мм (4×4 ячеек). Мини стол печати.','Модули до 240мм (6×6 ячеек). Стандартный стол печати.','Модули до 320мм (8×8 ячеек). XL стол печати.'],
+    varHints:['Модули до 160 мм (4×4 ячеек). Печатный стол Mini.','Модули до 240 мм (6×6 ячеек). Стандартный печатный стол.','Модули до 320 мм (8×8 ячеек). Печатный стол XL.'],
     width:'Ширина', height:'Высота', mountDensity:'Плотность крепления',
+    sizes:'Размеры панелей', sizesClear:'сброс',
+    sizesHint:'Кликните по размеру, чтобы исключить его — раскладка использует другие модули. Кликните снова, чтобы вернуть.',
+    sizesEmpty:'Пока нет размеров для исключения.',
+    szCenter:'Центр', szTopbot:'Верх/низ', szSide:'Боковые',
+    szDisable:'Исключить этот размер', szEnable:'Снова разрешить этот размер',
     span:'Пролёт', dense:'Часто', sparse:'Редко',
     vertHint:'Вертикаль жёстче горизонтали — провисание от нагрузки.',
     total:'Итого', allParts:'Всего деталей', modules:'Модулей',
-    connectors:'Коннект.', brackets:'Кронштейнов', mountPts:'точек крепления',
+    connectors:'Коннекторов', brackets:'Кронштейнов', mountPts:'точек крепления',
+    mountPtsLabel:n=>`${pluralRu(n,'точка','точки','точек')} крепления`,
     printList:'Список для печати', tabBoard:'Схема доски', tabMount:'Крепление к стене',
+    config:'Конфигурация', cfgExport:'Экспорт', cfgImport:'Импорт',
+    cfgExported:'Конфигурация скачана в JSON-файл.',
+    cfgImported:(w,h)=>`Конфигурация загружена: ${w}×${h} ячеек.`,
+    cfgErr:'Не удалось прочитать файл — нужен JSON конфига планировщика.',
     tabCat:'Каталог деталей', frontView:'Вид спереди',
+    tabColor:'Цвета филамента', colorView:'План филамента',
+    addColor:'Добавить цвет', erase:'Ластик', clearPaint:'Очистить покраску',
+    paintHint:'Выберите цвет филамента и кликайте или проводите по панелям, чтобы покрасить их.',
+    clearPaintConfirm:'Очистить все цвета панелей?',
+    delColor:'Удалить этот цвет',
+    presets:'Пресеты', presetGradient:'Градиент', presetRings:'Кольца',
+    presetFrame:'Рамка', presetChecker:'Шахматка', presetStripes:'Полосы', presetSolid:'Один цвет',
     rearView:'Вид сзади · расположение кронштейнов',
-    legCorner:'Corner module', legTopbot:'Top/bot module',
-    legSide:'Side module', legModule:'Center module',
-    legMount:'⚑ Кронштейн (mounting.3mf)', legConn:'Connector', legScrew:'Шуруп в стену',
-    legCM:'Corner mounts', legSM:'Side mounts', legTBM:'Top & bottom mounts', legMBM:'Mid board mount',
+    legCorner:'Угловой модуль', legTopbot:'Модуль верх/низ',
+    legSide:'Боковой модуль', legModule:'Центральный модуль',
+    legMount:'⚑ Кронштейн (mounting.3mf)', legConn:'Коннектор', legScrew:'Шуруп в стену',
+    legCM:'Угловые крепления', legSM:'Боковые крепления', legTBM:'Крепления верх/низ', legMBM:'Промежуточное крепление',
     densNames:['Очень часто','Часто','Нормально','Редко','Очень редко'],
-    cells:'ячеек', plate:'пл.', fromFile:'из',
+    cells:'ячеек', plate:'пл.', fromFile:'из', mm:'мм', unitM:'м', unitCm:'см', unitM2:'м²', unitCm2:'см²',
+    partStd:'Модуль', partTopbot:'Модуль верх/низ', partSide:'Боковой модуль',
+    partCorner:'Угловой модуль', partConnector:'Коннектор',
+    roleBracket:'кронштейн', roleDistConn:'дистанц. коннектор', mountingShort:'крепление',
+    shortCorner:'угол', shortSide:'бок', shortTopbot:'верх/низ', shortMid:'пром',
+    remove:'удалить',
+    mountCorner:'Угловые крепления', mountCornerDist:'Дистанционный коннектор углового модуля',
+    mountSide:'Боковые крепления', mountSideDist:'Дистанционный коннектор боковых и верх/низ модулей',
+    mountTopbot:'Крепления верх/низ', mountTopbotDist:'Дистанционный коннектор боковых и верх/низ модулей',
+    mountMid:'Промежуточное крепление', mountMidDist:'Дистанционный коннектор промежуточного модуля',
+    connSheetsLine:(s,p)=>`${s} ${pluralRu(s,'лист','листа','листов')} по ${p} шт/лист`,
     secModules:'Модули', secConn:'Коннекторы', secMount:'Крепление к стене',
     shts:'листа по', perSheet:'шт/лист',
     shGroup:n=>`— ${n} шт.`,
-    mountTotal:(n,c,s,tb,m)=>`Итого точек крепления: <b style="color:var(--acc2)">${n}</b> &nbsp;·&nbsp; Corner ×${c} &nbsp; Side ×${s} &nbsp; Top/bot ×${tb} &nbsp; Mid ×${m} &nbsp;·&nbsp; Шурупов в стену: <b style="color:var(--acc2)">${n}</b>`,
-    catModule:'Module · центр', catTopbot:'Top & bottom module',
-    catSide:'Side module', catCorner:'Corner module',
-    catConn:'Коннекторы', catConnSheets:n=>`${n} листа`,
+    mountTotal:(n,c,s,tb,m)=>`Итого точек крепления: <b style="color:var(--acc2)">${n}</b> &nbsp;·&nbsp; Угловые ×${c} &nbsp; Боковые ×${s} &nbsp; Верх/низ ×${tb} &nbsp; Промежуточные ×${m} &nbsp;·&nbsp; Шурупов в стену: <b style="color:var(--acc2)">${n}</b>`,
+    catModule:'Центральный модуль', catTopbot:'Модуль верх/низ',
+    catSide:'Боковой модуль', catCorner:'Угловой модуль',
+    catConn:'Коннекторы', catConnSheets:n=>`${n} ${pluralRu(n,'лист','листа','листов')}`,
     catMountH:'Монтажные комплекты — mounting.3mf · 7 пластин',
-    catMountNote:`Каждая точка крепления = <b>2 детали</b>:<br>🔲 <b>Кронштейн</b> (пл. 01–04) — заменяет модуль в точке крепления, имеет отверстие под шуруп<br>🔲 <b>Дистанционный коннектор</b> (пл. 05–07) — создаёт зазор ~20мм от стены, через него шуруп`,
+    catMountNote:`Каждая точка крепления = <b>2 детали</b>:<br>🔲 <b>Кронштейн</b> (пл. 01–04) — заменяет модуль в точке крепления, имеет отверстие под шуруп<br>🔲 <b>Дистанционный коннектор</b> (пл. 05–07) — создаёт зазор ~20 мм от стены, через него проходит шуруп`,
     varTLBL:'TL+BL', varTRBR:'TR+BR',
-    excl:'Запреты крепления', exclClear:'сброс',
-    exclHint:'Выберите режим и кликайте по точкам крепления на виде спереди. Полезно когда в стене скрыта проводка или трубы.',
+    excl:'Исключения креплений', exclClear:'сброс',
+    exclHint:'Выберите режим и кликайте по точкам крепления на виде спереди. Полезно, когда в стене скрыта проводка или трубы.',
     emOff:'Выкл', emCol:'Колонка', emRow:'Ряд', emPt:'Точка',
     exclEmpty:'Нет исключений. Все точки крепления активны.',
     exclCols:'Исключённые колонки (X)', exclRows:'Исключённые ряды (Y)', exclPts:'Исключённые точки (X,Y мм)',
-    exclWarn:n=>`⚠ Большие пролёты между точками крепления (до ${n}мм). Риск провисания — увеличьте плотность крепления.`,
+    exclWarn:n=>`⚠ Большие пролёты между точками крепления (до ${n} мм). Риск провисания — увеличьте плотность крепления.`,
   }
 };
+
+function pluralRu(n, one, few, many) {
+  const a = Math.abs(n) % 100, b = a % 10;
+  if (a > 10 && a < 20) return many;
+  if (b > 1 && b < 5) return few;
+  if (b === 1) return one;
+  return many;
+}
 
 function t(key, ...args) {
   const v = I18N[LANG][key];
   return typeof v === 'function' ? v(...args) : (v ?? key);
+}
+
+// Language defaults to the browser locale on first visit; an explicit RU/EN
+// choice from the header is stored and always wins afterwards.
+function detectLang() {
+  const saved = localStorage.getItem('skadis-lang');
+  if (saved === 'ru' || saved === 'en') return saved;
+  const primary = (navigator.languages && navigator.languages[0]) || navigator.language || '';
+  return /^ru\b/i.test(primary) ? 'ru' : 'en';
 }
 
 function applyI18n() {
@@ -317,6 +456,7 @@ function applyI18n() {
 function toggleLang() {
   LANG = LANG === 'en' ? 'ru' : 'en';
   localStorage.setItem('skadis-lang', LANG);
+  document.documentElement.lang = LANG;
   applyI18n();
   if (VARK) document.getElementById('varHint').textContent = t('varHints')[{mini:0,standard:1,xl:2}[VARK]];
   go(); // re-render all dynamic content
@@ -484,23 +624,23 @@ const PLATES_MOUNTING = {
 
 const MOUNTS = {
   corner: {
-    bracket: 'Corner mounts',           bpl: PLATES_MOUNTING.corner_bracket,
-    dist:    'Corner module distance connector', dpl: PLATES_MOUNTING.corner_dist,
+    bracketKey:'mountCorner',          bpl: PLATES_MOUNTING.corner_bracket,
+    distKey:'mountCornerDist',         dpl: PLATES_MOUNTING.corner_dist,
     specPlate: PLATES_MOUNTING.corner_bracket,
   },
   side: {
-    bracket: 'Side mounts',             bpl: PLATES_MOUNTING.side_bracket,
-    dist:    'Side, top & bottom module distance connector', dpl: PLATES_MOUNTING.sideedge_dist,
+    bracketKey:'mountSide',            bpl: PLATES_MOUNTING.side_bracket,
+    distKey:'mountSideDist',           dpl: PLATES_MOUNTING.sideedge_dist,
     specPlate: PLATES_MOUNTING.side_bracket,
   },
   topbot: {
-    bracket: 'Top & bottom mounts',     bpl: PLATES_MOUNTING.topbot_bracket,
-    dist:    'Side, top & bottom module distance connector', dpl: PLATES_MOUNTING.sideedge_dist,
+    bracketKey:'mountTopbot',          bpl: PLATES_MOUNTING.topbot_bracket,
+    distKey:'mountTopbotDist',         dpl: PLATES_MOUNTING.sideedge_dist,
     specPlate: PLATES_MOUNTING.topbot_bracket,
   },
   mid: {
-    bracket: 'Mid board mount',         bpl: PLATES_MOUNTING.mid_bracket,
-    dist:    'Mid board module distance connector', dpl: PLATES_MOUNTING.mid_dist,
+    bracketKey:'mountMid',             bpl: PLATES_MOUNTING.mid_bracket,
+    distKey:'mountMidDist',            dpl: PLATES_MOUNTING.mid_dist,
     specPlate: PLATES_MOUNTING.mid_bracket,
   },
 };
@@ -527,7 +667,6 @@ function connectorInfo() {
 }
 
 // RF/RB/RT role colors now in THEME_COLORS, accessed via TC().RF etc.
-const RLAB={corner:'Corner module',topbot:'Top/bot module',side:'Side module',std:'Module',mount:'Спец. 40×40'};
 
 function hkOf(m) {
   if (m.role === 'mount') return `mount_${m.mountKey}`;
@@ -539,6 +678,71 @@ let HK = null;  // board highlight key
 let MHK = null; // mount highlight key
 let EXCL = {x:new Set(), y:new Set(), p:new Set()}; // excluded mount columns / rows / individual points "x,y"
 let EXCL_MODE = 'off'; // 'off' | 'col' | 'row' | 'pt'
+
+// Explicitly excluded panel sizes, keyed "role|wCxhC" (dimensions in cells)
+let EXCL_SIZES = new Set();
+
+// Filament palette and per-panel paint assignments
+const DEFAULT_PALETTE = ['#e55c25','#e8e6e0','#1a1a1a','#8a8880','#c0392b','#30783a','#2c5090','#d4a017'];
+let FILAMENT_PALETTE = [...DEFAULT_PALETTE];
+let PANEL_COLORS = {};          // key "role|x,y,wCxhC" -> "#rrggbb"
+let PAINT_COLOR = DEFAULT_PALETTE[0];
+let ERASE_MODE = false;
+let COLOR_HOVER = -1;
+let COLOR_PAINTING = false;
+let COLOR_LAST = -1;
+let COLOR_DIRTY = false;
+
+function isHexColor(v){
+  return typeof v === 'string' && /^#[0-9a-f]{6}$/i.test(v);
+}
+function colorKey(m){
+  return `${m.role}|${m.x},${m.y},${m.wC}x${m.hC}`;
+}
+function saveColors(){
+  localStorage.setItem('skadis-colors', JSON.stringify({
+    palette: FILAMENT_PALETTE,
+    paint: PANEL_COLORS,
+    selected: PAINT_COLOR
+  }));
+}
+function loadColors(){
+  try {
+    const saved = JSON.parse(localStorage.getItem('skadis-colors') || 'null') || {};
+    const pal = Array.isArray(saved.palette) ? saved.palette.filter(isHexColor).map(c => c.toLowerCase()) : [];
+    FILAMENT_PALETTE = pal.length ? [...new Set(pal)] : [...DEFAULT_PALETTE];
+    PANEL_COLORS = {};
+    if (saved.paint && typeof saved.paint === 'object' && !Array.isArray(saved.paint)) {
+      for (const [k, v] of Object.entries(saved.paint)) {
+        if (isHexColor(v) && /^(std|topbot|side|corner|mount)\|\d+,\d+,\d+x\d+$/.test(k)) {
+          PANEL_COLORS[k] = v.toLowerCase();
+          if (!FILAMENT_PALETTE.includes(v.toLowerCase())) FILAMENT_PALETTE.push(v.toLowerCase());
+        }
+      }
+    }
+    PAINT_COLOR = isHexColor(saved.selected) && FILAMENT_PALETTE.includes(saved.selected.toLowerCase())
+      ? saved.selected.toLowerCase()
+      : FILAMENT_PALETTE[0];
+    ERASE_MODE = false;
+  } catch(e) {
+    FILAMENT_PALETTE = [...DEFAULT_PALETTE];
+    PANEL_COLORS = {};
+    PAINT_COLOR = DEFAULT_PALETTE[0];
+    ERASE_MODE = false;
+  }
+}
+
+
+function sizeKey(role, wC, hC){ return `${role}|${wC}x${hC}`; }
+function saveSizeExclusions(){
+  localStorage.setItem('skadis-excl-sizes', JSON.stringify([...EXCL_SIZES]));
+}
+function loadSizeExclusions(){
+  try {
+    const saved = JSON.parse(localStorage.getItem('skadis-excl-sizes') || '[]');
+    EXCL_SIZES = new Set(Array.isArray(saved) ? saved.filter(k => typeof k === 'string') : []);
+  } catch(e) { EXCL_SIZES = new Set(); }
+}
 
 function setExclMode(m) {
   EXCL_MODE = m;
@@ -583,22 +787,66 @@ function redrawMount() {
 // ═══════════════════════════════════════════════════════════════
 // MOUNT POINTS
 // ═══════════════════════════════════════════════════════════════
-function pickBounds(bounds, total, gap) {
+// Build a mirrored mount grid: spans between mounts are a palindrome, so the
+// module columns/rows are symmetric around the board centre. The number of
+// mount spans is chosen to minimise the total number of panels.
+function balancedPalindromic(k, sum, maxSize) {
+  if (sum < k || sum > k * maxSize) return null;
+  if (k % 2 === 0 && sum % 2 !== 0) return null;
+  const q = Math.floor(sum / k);
+  const a = new Array(k).fill(q);
+  let extra = sum - q * k;
+  const mid = k % 2 === 1 ? Math.floor(k / 2) : -1;
+  if (extra % 2 === 1 && mid >= 0) { a[mid]++; extra--; }
+  if (extra % 2 !== 0) return null;
+  let pairs = extra / 2;
+  for (let i = 0; i < Math.floor(k / 2) && pairs > 0; i++, pairs--) {
+    a[i]++; a[k - 1 - i]++;
+  }
+  return a;
+}
+
+function pickBounds(total, gap) {
+  const inner = total - 2;
+  if (inner <= 0) return [0, total];
+
+  const maxSpan = Math.max(1, gap - 1); // cells between two mounts
+  const kMin = Math.max(1, Math.ceil((inner + 1) / (maxSpan + 1)));
+  const kMax = Math.min(inner, kMin + 12);
+
+  let best = null, bestPieces = Infinity, bestMax = 0;
+  for (let k = kMin; k <= kMax; k++) {
+    const spanSum = inner - (k - 1);
+    if (spanSum < k) break;
+    const sizes = balancedPalindromic(k, spanSum, maxSpan);
+    if (!sizes) continue;
+    let pieces = k - 1; // mount cells
+    let maxPanel = 0;
+    for (const s of sizes) {
+      pieces += Math.ceil(s / MAX);
+      maxPanel = Math.max(maxPanel, Math.min(s, MAX));
+    }
+    if (pieces < bestPieces || (pieces === bestPieces && maxPanel > bestMax)) {
+      bestPieces = pieces; bestMax = maxPanel; best = sizes;
+    }
+  }
+  if (!best) {
+    const k = Math.max(1, kMin);
+    best = balancedPalindromic(k, inner - (k - 1), maxSpan) || new Array(k).fill(1);
+  }
+
   const s = new Set([0, total]);
-  let last = 0;
-  while (last < total) {
-    const cands = bounds.filter(b => b > last && b <= last + gap);
-    if (!cands.length) { const n = bounds.find(b => b > last); if (n!=null){s.add(n);last=n;}else break; }
-    else { const best = Math.max(...cands); s.add(best); last = best; }
+  let pos = 1;
+  for (let i = 0; i < best.length; i++) {
+    pos += best[i];
+    if (i < best.length - 1) { s.add(pos); pos++; }
   }
   return [...s].sort((a,b)=>a-b);
 }
 
-function computeMountPts(wC, hC, maxH, maxV) {
-  const colAll = allBounds(wC, MAX);
-  const rowAll = allBounds(hC, MAX);
-  const xPts = pickBounds(colAll, wC, maxH);
-  const yPts = pickBounds(rowAll, hC, maxV);
+function computeMountPts(wC, hC, gapH, gapV) {
+  const xPts = pickBounds(wC, gapH);
+  const yPts = pickBounds(hC, gapV);
   // Drop stale exclusions (positions no longer present after density / size change)
   for (const v of [...EXCL.x]) if (!xPts.includes(v)) EXCL.x.delete(v);
   for (const v of [...EXCL.y]) if (!yPts.includes(v)) EXCL.y.delete(v);
@@ -630,31 +878,246 @@ function computeMountPts(wC, hC, maxH, maxV) {
   return {pts, xPts, yPts};
 }
 
-function allBounds(total, step) {
-  const b = new Set([0, total, 1, total-1]);
-  let p = 1;
-  const inner = total - 2;
-  let rem = inner;
-  while (rem > 0) { const s = Math.min(rem, step); p += s; b.add(p); rem -= s; }
-  return [...b].sort((a,b)=>a-b);
-}
-
 // ═══════════════════════════════════════════════════════════════
 // LAYOUT — mount-aware: special 40×40 cells at each mount position
 // ═══════════════════════════════════════════════════════════════
-function segsWithMountCells(total, mountPositions, maxStep) {
-  // Ensure 1-cell segments at each mount position
+// Segmentation respects a set of allowed module sizes (in cells), so that
+// explicitly excluded panel sizes are never produced.
+function forcedBreaks(total, mountPositions) {
   const forced = new Set([0, total]);
   for (const m of mountPositions) {
     if (m >= 0 && m < total)   forced.add(m);
     if (m > 0  && m+1 <= total) forced.add(m+1);
   }
-  const breaks = [...forced].sort((a,b)=>a-b);
-  const result = [];
+  return [...forced].sort((a,b)=>a-b);
+}
+
+function spansBetween(total, mountPositions) {
+  const breaks = forcedBreaks(total, mountPositions);
+  const spans = [];
   for (let i = 0; i < breaks.length-1; i++) {
-    const from=breaks[i], to=breaks[i+1], span=to-from;
-    let rem=span, pos=from;
-    while (rem > 0) { const s=Math.min(rem,maxStep); result.push({start:pos,size:s}); pos+=s; rem-=s; }
+    const span = breaks[i+1] - breaks[i];
+    if (span > 0) spans.push(span);
+  }
+  return spans;
+}
+
+function maskSizes(mask) {
+  const a = [];
+  for (let i = 0; i < MAX; i++) if (mask >> i & 1) a.push(i+1);
+  return a;
+}
+
+const _piecesCache = new Map();
+function spanPieces(span, allowed) {
+  const key = span + '|' + allowed.join(',');
+  if (_piecesCache.has(key)) return _piecesCache.get(key);
+  const INF = 1e9;
+  const dp = new Array(span+1).fill(INF);
+  dp[0] = 0;
+  for (let i = 1; i <= span; i++) {
+    for (const s of allowed) {
+      if (s > i) break;
+      if (dp[i-s] + 1 < dp[i]) dp[i] = dp[i-s] + 1;
+    }
+  }
+  const v = dp[span] < INF ? dp[span] : null;
+  _piecesCache.set(key, v);
+  return v;
+}
+
+function costForSpans(spans, allowed) {
+  let c = 0;
+  for (const span of spans) {
+    const p = spanPieces(span, allowed);
+    if (p == null) return null;
+    c += p;
+  }
+  return c;
+}
+
+// Pick the column and row size sets. Borders use the same sets as the center
+// so vertical/horizontal seams stay aligned across the whole board. The search
+// minimises the total number of modules while avoiding excluded panel sizes.
+function bestAxisMasks(spans) {
+  const limit = 1 << MAX;
+  const cols = [], rows = [];
+  for (let mask = 1; mask < limit; mask++) {
+    if (!(mask & 1)) continue;
+    const allowed = maskSizes(mask);
+
+    // Column set is used for center columns and top/bottom module widths.
+    if (!allowed.some(s => EXCL_SIZES.has(sizeKey('topbot', s, 1)))) {
+      const colCost = costForSpans(spans.col, allowed);
+      const topCost = costForSpans(spans.top, allowed);
+      const botCost = costForSpans(spans.bot, allowed);
+      if (colCost != null && topCost != null && botCost != null) {
+        cols.push({allowed, colCost, edgeCost: topCost + botCost, count: allowed.length});
+      }
+    }
+    // Row set is used for center rows and left/right module heights.
+    if (!allowed.some(s => EXCL_SIZES.has(sizeKey('side', 1, s)))) {
+      const rowCost = costForSpans(spans.row, allowed);
+      const leftCost = costForSpans(spans.left, allowed);
+      const rightCost = costForSpans(spans.right, allowed);
+      if (rowCost != null && leftCost != null && rightCost != null) {
+        rows.push({allowed, rowCost, edgeCost: leftCost + rightCost, count: allowed.length});
+      }
+    }
+  }
+
+  let best = null, bestScore = Infinity, bestCount = -1, bestCmax = 0, bestRmax = 0;
+  for (const cm of cols) for (const rm of rows) {
+    let bad = false;
+    for (const c of cm.allowed) {
+      for (const r of rm.allowed) {
+        if (EXCL_SIZES.has(sizeKey('std', c, r))) { bad = true; break; }
+      }
+      if (bad) break;
+    }
+    if (bad) continue;
+    const score = cm.colCost * rm.rowCost + cm.edgeCost + rm.edgeCost;
+    const cmax = cm.allowed[cm.allowed.length-1];
+    const rmax = rm.allowed[rm.allowed.length-1];
+    const count = cm.count + rm.count;
+    if (score < bestScore ||
+        (score === bestScore &&
+         (cmax > bestCmax ||
+          (cmax === bestCmax &&
+           (rmax > bestRmax || (rmax === bestRmax && count > bestCount)))))) {
+      bestScore = score; bestCount = count; bestCmax = cmax; bestRmax = rmax;
+      best = {col: cm.allowed, row: rm.allowed};
+    }
+  }
+  return best || {col:[1], row:[1]};
+}
+
+// Plain minimum-piece tiling, preferring larger pieces on ties.
+const _plainCache = new Map();
+function plainTile(span, allowed) {
+  const key = span + '|' + allowed.join(',');
+  if (_plainCache.has(key)) return _plainCache.get(key).slice();
+  const INF = 1e9;
+  const dp = new Array(span+1).fill(INF);
+  const pick = new Array(span+1).fill(0);
+  dp[0] = 0;
+  for (let i = 1; i <= span; i++) {
+    for (const s of allowed) {
+      if (s > i) break;
+      const cand = dp[i-s] + 1;
+      if (cand < dp[i] || (cand === dp[i] && s > pick[i])) {
+        dp[i] = cand; pick[i] = s;
+      }
+    }
+  }
+  const out = [];
+  if (dp[span] < INF) {
+    let left = span;
+    while (left > 0) { const s = pick[left]; out.push(s); left -= s; }
+    out.reverse();
+  }
+  _plainCache.set(key, out);
+  return out.slice();
+}
+
+// Compare two tilings by their panel sizes: larger panels win. The size
+// multisets are compared from largest to smallest.
+function tilingLarger(a, b) {
+  const sa = [...a].sort((x,y)=>y-x);
+  const sb = [...b].sort((x,y)=>y-x);
+  const n = Math.max(sa.length, sb.length);
+  for (let i = 0; i < n; i++) {
+    const x = sa[i] ?? -1, y = sb[i] ?? -1;
+    if (x !== y) return x > y;
+  }
+  return false; // equal size multisets
+}
+
+// Best mirror-symmetric tiling of a span: [left..., middle?, ...mirrored].
+function bestPalindrome(span, allowed) {
+  let pal = null, palPieces = Infinity, palMin = -1;
+  const mids = [0, ...allowed];
+  for (const mid of mids) {
+    if (mid > span) continue;
+    const rest = span - mid;
+    if (rest < 0 || rest % 2) continue;
+    const half = rest / 2;
+    const hp = half === 0 ? 0 : spanPieces(half, allowed);
+    if (hp == null) continue;
+    const total = hp * 2 + (mid > 0 ? 1 : 0);
+    const halfTiles = half === 0 ? [] : plainTile(half, allowed);
+    const seq = [...halfTiles];
+    if (mid > 0) seq.push(mid);
+    seq.push(...[...halfTiles].reverse());
+    const minSize = Math.min(...seq);
+    if (total < palPieces || (total === palPieces && minSize > palMin)) {
+      pal = seq; palPieces = total; palMin = minSize;
+    }
+  }
+  return {seq: pal, pieces: palPieces};
+}
+
+// Symmetric tiling used for the central span (it must mirror onto itself).
+function palTile(span, allowed) {
+  const key = 'P|' + span + '|' + allowed.join(',');
+  if (_tileCache.has(key)) return _tileCache.get(key).slice();
+  const p = bestPalindrome(span, allowed);
+  const out = p.seq || plainTile(span, allowed);
+  _tileCache.set(key, out);
+  return out.slice();
+}
+
+// Tile a non-central span. Minimal piece count always wins (fewer, bigger
+// panels); a symmetric arrangement is used only when it keeps the same sizes.
+const _tileCache = new Map();
+function tileSpan(span, allowed) {
+  const key = span + '|' + allowed.join(',');
+  if (_tileCache.has(key)) return _tileCache.get(key).slice();
+
+  const minPieces = spanPieces(span, allowed);
+  const plain = plainTile(span, allowed);
+  const pal = bestPalindrome(span, allowed);
+
+  let out = plain;
+  if (pal.seq && minPieces != null && pal.pieces === minPieces) {
+    if (tilingLarger(pal.seq, plain)) out = pal.seq;
+    else if (!tilingLarger(plain, pal.seq)) out = pal.seq; // identical sizes
+  }
+  _tileCache.set(key, out);
+  return out.slice();
+}
+
+function segsWithAllowed(total, mountPositions, allowed) {
+  const breaks = forcedBreaks(total, mountPositions);
+  const n = breaks.length - 1;
+  const pieces = new Array(n);
+
+  // Mirror span pairs so the whole axis is symmetric. The central span (if any)
+  // mirrors onto itself, so it must use a palindromic tiling.
+  for (let i = 0; i < n; i++) {
+    const j = n - 1 - i;
+    if (i > j) break;
+    const spanI = breaks[i+1] - breaks[i];
+    const spanJ = breaks[j+1] - breaks[j];
+    if (i === j) {
+      pieces[i] = palTile(spanI, allowed);
+    } else {
+      const t = tileSpan(spanI, allowed);
+      pieces[i] = t;
+      if (spanI === spanJ) pieces[j] = [...t].reverse();
+      else pieces[j] = tileSpan(spanJ, allowed);
+    }
+  }
+
+  const result = [];
+  for (let i = 0; i < n; i++) {
+    const from = breaks[i], span = breaks[i+1] - from;
+    if (span <= 0) continue;
+    let pos = from;
+    for (const s of pieces[i]) {
+      result.push({start: pos, size: s});
+      pos += s;
+    }
   }
   return result;
 }
@@ -675,6 +1138,27 @@ function computeLayout(wC, hC, pts) {
   // Helper: is there a mount point at this exact board-edge position?
   const hasMountAt = (x, y) => pts.some(p => p.x===x && p.y===y);
 
+  // Mount positions per border / inner axis
+  const leftMt  = iH > 0 ? borderMtInner(pts,'left',  wC,hC,iH) : [];
+  const rightMt = iH > 0 ? borderMtInner(pts,'right', wC,hC,iH) : [];
+  const topMt   = iW > 0 ? borderMtInner(pts,'top',    wC,hC,iW) : [];
+  const botMt   = iW > 0 ? borderMtInner(pts,'bottom', wC,hC,iW) : [];
+  const innerX  = (iW > 0 && iH > 0) ? pts.filter(p=>p.x>0&&p.x<wC&&p.y>0&&p.y<hC).map(p=>p.x-1) : [];
+  const innerY  = (iW > 0 && iH > 0) ? pts.filter(p=>p.x>0&&p.x<wC&&p.y>0&&p.y<hC).map(p=>p.y-1) : [];
+
+  // Choose column / row size sets that avoid excluded panel sizes.
+  // Borders share the center sets so seams line up across the whole board.
+  const axisAllowed = bestAxisMasks({
+    col:   spansBetween(iW, innerX),
+    row:   spansBetween(iH, innerY),
+    top:   spansBetween(iW, topMt),
+    bot:   spansBetween(iW, botMt),
+    left:  spansBetween(iH, leftMt),
+    right: spansBetween(iH, rightMt),
+  });
+  const colAllowed = axisAllowed.col;
+  const rowAllowed = axisAllowed.row;
+
   // ── CORNERS — corner mount (пл.01) OR corner module (пл.25/27)
   const cornerDefs = [
     {x:0,    y:0,    v:'TL', mx:0,  my:0 },
@@ -692,14 +1176,12 @@ function computeLayout(wC, hC, pts) {
 
   // ── BORDER SIDES — side mount (пл.02) OR side module (пл.21–24)
   if (iH > 0) {
-    const leftMt  = borderMtInner(pts,'left',  wC,hC,iH);
-    const rightMt = borderMtInner(pts,'right', wC,hC,iH);
-    for (const seg of segsWithMountCells(iH, leftMt,  MAX)) {
+    for (const seg of segsWithAllowed(iH, leftMt, rowAllowed)) {
       const isMount = leftMt.includes(seg.start) && seg.size===1;
       mods.push({x:0,    y:1+seg.start, wC:1, hC:seg.size,
         role: isMount ? 'mount' : 'side', mountKey: isMount ? 'side' : null});
     }
-    for (const seg of segsWithMountCells(iH, rightMt, MAX)) {
+    for (const seg of segsWithAllowed(iH, rightMt, rowAllowed)) {
       const isMount = rightMt.includes(seg.start) && seg.size===1;
       mods.push({x:wC-1, y:1+seg.start, wC:1, hC:seg.size,
         role: isMount ? 'mount' : 'side', mountKey: isMount ? 'side' : null});
@@ -708,14 +1190,12 @@ function computeLayout(wC, hC, pts) {
 
   // ── BORDER TOP/BOTTOM — top/bot mount (пл.03) OR top/bot module (пл.17–20)
   if (iW > 0) {
-    const topMt = borderMtInner(pts,'top',    wC,hC,iW);
-    const botMt = borderMtInner(pts,'bottom', wC,hC,iW);
-    for (const seg of segsWithMountCells(iW, topMt, MAX)) {
+    for (const seg of segsWithAllowed(iW, topMt, colAllowed)) {
       const isMount = topMt.includes(seg.start) && seg.size===1;
       mods.push({x:1+seg.start, y:0,    wC:seg.size, hC:1,
         role: isMount ? 'mount' : 'topbot', mountKey: isMount ? 'topbot' : null});
     }
-    for (const seg of segsWithMountCells(iW, botMt, MAX)) {
+    for (const seg of segsWithAllowed(iW, botMt, colAllowed)) {
       const isMount = botMt.includes(seg.start) && seg.size===1;
       mods.push({x:1+seg.start, y:hC-1, wC:seg.size, hC:1,
         role: isMount ? 'mount' : 'topbot', mountKey: isMount ? 'topbot' : null});
@@ -724,10 +1204,8 @@ function computeLayout(wC, hC, pts) {
 
   // ── CENTER — mid board mount (пл.04) OR standard module (пл.01–16)
   if (iW > 0 && iH > 0) {
-    const innerX = pts.filter(p=>p.x>0&&p.x<wC&&p.y>0&&p.y<hC).map(p=>p.x-1);
-    const innerY = pts.filter(p=>p.x>0&&p.x<wC&&p.y>0&&p.y<hC).map(p=>p.y-1);
-    const colSegs = segsWithMountCells(iW, innerX, MAX);
-    const rowSegs = segsWithMountCells(iH, innerY, MAX);
+    const colSegs = segsWithAllowed(iW, innerX, colAllowed);
+    const rowSegs = segsWithAllowed(iH, innerY, rowAllowed);
     for (const rs of rowSegs) for (const cs of colSegs) {
       const isMount = innerX.includes(cs.start) && cs.size===1 &&
                       innerY.includes(rs.start) && rs.size===1;
@@ -736,22 +1214,60 @@ function computeLayout(wC, hC, pts) {
     }
   }
 
-  // ── CONNECTOR GRID — only at ACTUAL module boundary intersections
-  // Collect real column and row boundaries from the placed modules
-  const realColB = new Set();
-  const realRowB = new Set();
-  for (const m of mods) {
-    realColB.add(m.x);
-    realColB.add(m.x + m.wC);
-    realRowB.add(m.y);
-    realRowB.add(m.y + m.hC);
-  }
-  const cbArr = [...realColB].sort((a,b)=>a-b);
-  const rbArr = [...realRowB].sort((a,b)=>a-b);
-  const conns = [];
-  for (const ry of rbArr) for (const cx of cbArr) conns.push({x:cx, y:ry});
+  // ── CONNECTORS & SEAMS — derived from the actual placed modules.
+  // A connector is only valid where every module touching that lattice point
+  // has it as a real corner. This avoids phantom connectors/lines when module
+  // boundaries do not line up across rows (e.g. after size exclusions).
+  const conns = computeConnectors(mods, wC, hC);
+  const seams = computeSeams(mods, wC, hC);
 
-  return {mods, conns, colB:cbArr, rowB:rbArr};
+  return {mods, conns, seams};
+}
+
+function computeConnectors(mods, wC, hC) {
+  const occ = new Int32Array(wC * hC).fill(-1);
+  mods.forEach((m, idx) => {
+    for (let y = m.y; y < m.y + m.hC; y++) {
+      for (let x = m.x; x < m.x + m.wC; x++) occ[y*wC + x] = idx;
+    }
+  });
+  const corners = new Set();
+  for (const m of mods) {
+    corners.add(`${m.x},${m.y}`);
+    corners.add(`${m.x + m.wC},${m.y}`);
+    corners.add(`${m.x},${m.y + m.hC}`);
+    corners.add(`${m.x + m.wC},${m.y + m.hC}`);
+  }
+  const isCorner = (m, x, y) =>
+    (m.x === x || m.x + m.wC === x) &&
+    (m.y === y || m.y + m.hC === y);
+  const quads = [[-1,-1], [0,-1], [-1,0], [0,0]];
+  const conns = [];
+  for (const key of corners) {
+    const [x, y] = key.split(',').map(Number);
+    let ok = true;
+    for (const [dx, dy] of quads) {
+      const cx = x + dx, cy = y + dy;
+      if (cx < 0 || cy < 0 || cx >= wC || cy >= hC) continue; // outside board
+      const m = mods[occ[cy*wC + cx]];
+      if (!m || !isCorner(m, x, y)) { ok = false; break; }
+    }
+    if (ok) conns.push({x, y});
+  }
+  conns.sort((a,b) => a.y - b.y || a.x - b.x);
+  return conns;
+}
+
+function computeSeams(mods, wC, hC) {
+  // Unique actual module edges, excluding the outer board border.
+  const v = new Map(), h = new Map();
+  for (const m of mods) {
+    if (m.x > 0)          v.set(`v|${m.x}|${m.y}|${m.y+m.hC}`, {x:m.x, y1:m.y, y2:m.y+m.hC});
+    if (m.x + m.wC < wC)  v.set(`v|${m.x+m.wC}|${m.y}|${m.y+m.hC}`, {x:m.x+m.wC, y1:m.y, y2:m.y+m.hC});
+    if (m.y > 0)          h.set(`h|${m.y}|${m.x}|${m.x+m.wC}`, {y:m.y, x1:m.x, x2:m.x+m.wC});
+    if (m.y + m.hC < hC)  h.set(`h|${m.y+m.hC}|${m.x}|${m.x+m.wC}`, {y:m.y+m.hC, x1:m.x, x2:m.x+m.wC});
+  }
+  return {v:[...v.values()], h:[...h.values()]};
 }
 
 // ═══════════════════════════════════════════════════════════════
@@ -833,20 +1349,20 @@ function renderBOM(b, lay) {
     if (cInfo && cInfo.file === file) {
       const plTL = plateFor('corner',40,40,'TL');
       const plTR = plateFor('corner',40,40,'TR');
-      if (cTL > 0) h += row(TC().RF.corner, TC().RB.corner, cTL, 'Corner module 40×40mm', `40×40×5.2mm · ${t('plate')} ${plTL.plate} · ${t('varTLBL')}`, false, false, 'corner|40|40');
-      if (cTR > 0) h += row(TC().RF.corner, TC().RB.corner, cTR, 'Corner module 40×40mm', `40×40×5.2mm · ${t('plate')} ${plTR.plate} · ${t('varTRBR')}`, false, false, 'corner|40|40');
+      if (cTL > 0) h += row(TC().RF.corner, TC().RB.corner, cTL, `${t('partCorner')} 40×40 ${t('mm')}`, `40×40×5.2 ${t('mm')} · ${t('plate')} ${plTL.plate} · ${t('varTLBL')}`, false, false, 'corner|40|40');
+      if (cTR > 0) h += row(TC().RF.corner, TC().RB.corner, cTR, `${t('partCorner')} 40×40 ${t('mm')}`, `40×40×5.2 ${t('mm')} · ${t('plate')} ${plTR.plate} · ${t('varTRBR')}`, false, false, 'corner|40|40');
     }
     for (const g of items) {
-      const roleLabel = {topbot:'Top & bottom module', side:'Side module', std:'Module'}[g.role] ?? 'Module';
+      const roleLabel = {topbot:t('partTopbot'), side:t('partSide'), std:t('partStd')}[g.role] ?? t('partStd');
       const hk = `${g.role}|${g.wMm}|${g.hMm}`;
-      h += row(TC().RF[g.role], TC().RB[g.role], g.n, `${roleLabel} ${g.wMm}×${g.hMm}mm`, `${g.wMm}×${g.hMm}×5.2mm · ${t('plate')} ${g._plate}`, false, false, hk);
+      h += row(TC().RF[g.role], TC().RB[g.role], g.n, `${roleLabel} ${g.wMm}×${g.hMm} ${t('mm')}`, `${g.wMm}×${g.hMm}×5.2 ${t('mm')} · ${t('plate')} ${g._plate}`, false, false, hk);
     }
   }
 
   // ── Connectors
   const ci = connectorInfo();
   h += `<div class="bsec">${t('secConn')} · ${shortFile(ci.file)} · ${t('plate')} ${ci.plate}</div>`;
-  h += row(TC().bomConn, TC().bomConnBdr, b.connCnt, 'Connector', `20×20×3.5mm · ${b.connSheets} ${t('shts')} ${ci.perSheet} ${t('perSheet')}`, true, false, '');
+  h += row(TC().bomConn, TC().bomConnBdr, b.connCnt, t('partConnector'), `20×20×3.5 ${t('mm')} · ${t('connSheetsLine', b.connSheets, ci.perSheet)}`, true, false, '');
 
   // ── Mounting
   h += `<div class="bsec">${t('secMount')} · ${shortFile(FILE2)}</div>`;
@@ -865,9 +1381,9 @@ function renderBOM(b, lay) {
     const mountHK = `mount_${r.key}`;
     const hdrEnter = `onmouseenter="MHK='${r.key}';if(document.getElementById('vmount').classList.contains('on'))redrawMount();highlightBOMMount('${r.key}')"`;
     const hdrLeave = `onmouseleave="MHK=null;if(document.getElementById('vmount').classList.contains('on'))redrawMount();highlightBOMMount(null)"`;
-    h += `<div style="font-size:11px;color:var(--t2);padding:6px 0 2px;font-weight:500;border-top:1px solid var(--b1);margin-top:2px;cursor:pointer" ${hdrEnter} ${hdrLeave}>${M.bracket} ${t('shGroup',r.n)}</div>`;
-    h += row(r.f, r.bdr, r.n, M.bracket, `${t('plate')} ${M.bpl} · mounting`, false, r.isDiam, mountHK);
-    h += row(TC().bomMountDist, TC().bomMountDistBdr, r.n, M.dist, `${t('plate')} ${M.dpl} · mounting`, false, false, mountHK);
+    h += `<div style="font-size:11px;color:var(--t2);padding:6px 0 2px;font-weight:500;border-top:1px solid var(--b1);margin-top:2px;cursor:pointer" ${hdrEnter} ${hdrLeave}>${t(M.bracketKey)} ${t('shGroup',r.n)}</div>`;
+    h += row(r.f, r.bdr, r.n, t(M.bracketKey), `${t('plate')} ${M.bpl} · ${t('mountingShort')}`, false, r.isDiam, mountHK);
+    h += row(TC().bomMountDist, TC().bomMountDistBdr, r.n, t(M.distKey), `${t('plate')} ${M.dpl} · ${t('mountingShort')}`, false, false, mountHK);
   }
 
   document.getElementById('bom').innerHTML = h;
@@ -889,24 +1405,24 @@ function renderExclusions(xPts, yPts, D) {
     list.innerHTML = `<div style="color:var(--t3);font-family:var(--sans);font-size:11px;line-height:1.5">${t('exclEmpty')}</div>`;
   } else {
     const chip = (label, onClick) =>
-      `<span style="display:inline-flex;align-items:center;gap:4px;background:var(--bg);border:1px solid var(--b2);border-radius:3px;padding:2px 5px 2px 7px;margin:2px 3px 2px 0;color:var(--acc2);cursor:pointer" onclick="${onClick}" title="remove">${label}<span style="color:var(--t3);font-weight:600">×</span></span>`;
+      `<span style="display:inline-flex;align-items:center;gap:4px;background:var(--bg);border:1px solid var(--b2);border-radius:3px;padding:2px 5px 2px 7px;margin:2px 3px 2px 0;color:var(--acc2);cursor:pointer" onclick="${onClick}" title="${t('remove')}">${label}<span style="color:var(--t3);font-weight:600">×</span></span>`;
     const sect = title => `<div style="font-family:var(--sans);font-size:10px;color:var(--t3);text-transform:uppercase;letter-spacing:.08em;margin-top:6px">${title}</div><div>`;
     let h = '';
     if (xs.length) {
       h += sect(t('exclCols'));
-      for (const x of xs) h += chip(`${x*S}mm`, `removeExclX(${x})`);
+      for (const x of xs) h += chip(`${x*S} ${t('mm')}`, `removeExclX(${x})`);
       h += `</div>`;
     }
     if (ys.length) {
       h += sect(t('exclRows'));
-      for (const y of ys) h += chip(`${y*S}mm`, `removeExclY(${y})`);
+      for (const y of ys) h += chip(`${y*S} ${t('mm')}`, `removeExclY(${y})`);
       h += `</div>`;
     }
     if (ps.length) {
       h += sect(t('exclPts'));
       for (const k of ps) {
         const [px,py] = k.split(',').map(Number);
-        h += chip(`${px*S},${py*S}`, `removeExclP('${k}')`);
+        h += chip(`${px*S},${py*S} ${t('mm')}`, `removeExclP('${k}')`);
       }
       h += `</div>`;
     }
@@ -931,6 +1447,428 @@ function renderExclusions(xPts, yPts, D) {
   } else {
     warn.style.display = 'none';
   }
+}
+
+// ═══════════════════════════════════════════════════════════════
+// PANEL SIZE EXCLUSIONS
+// ═══════════════════════════════════════════════════════════════
+function toggleSize(role, wC, hC) {
+  const k = sizeKey(role, wC, hC);
+  if (EXCL_SIZES.has(k)) EXCL_SIZES.delete(k); else EXCL_SIZES.add(k);
+  saveSizeExclusions();
+  go();
+}
+
+function clearSizeExclusions() {
+  EXCL_SIZES.clear();
+  saveSizeExclusions();
+  go();
+}
+
+function renderSizeExclusions(lay) {
+  const list = document.getElementById('sizeList');
+  const clr  = document.getElementById('sizesClear');
+  if (!list) return;
+  clr.style.display = EXCL_SIZES.size ? 'inline-block' : 'none';
+
+  // Sizes currently used in the layout + sizes the user has excluded
+  const groups = {std:new Set(), topbot:new Set(), side:new Set()};
+  for (const m of lay.mods) {
+    if (m.role === 'std' || m.role === 'topbot' || m.role === 'side') {
+      groups[m.role].add(`${m.wC}x${m.hC}`);
+    }
+  }
+  for (const key of EXCL_SIZES) {
+    const [role, dim] = key.split('|');
+    const [wc, hc] = dim.split('x').map(Number);
+    if (groups[role] && wc <= MAX && hc <= MAX) groups[role].add(dim);
+  }
+
+  const labels = {std:t('szCenter'), topbot:t('szTopbot'), side:t('szSide')};
+  let h = '';
+  for (const role of ['std','topbot','side']) {
+    const dims = [...groups[role]]
+      .map(d => { const [wc,hc] = d.split('x').map(Number); return {wc,hc}; })
+      .filter(o => !(o.wc === 1 && o.hc === 1))
+      .sort((a,z) => z.wc*z.hc - a.wc*a.hc || z.wc - a.wc || z.hc - a.hc);
+    if (!dims.length) continue;
+    h += `<div class="szsec">${labels[role]}</div><div class="szchips">`;
+    for (const o of dims) {
+      const excluded = EXCL_SIZES.has(sizeKey(role, o.wc, o.hc));
+      const title = excluded ? t('szEnable') : t('szDisable');
+      h += `<button class="szchip${excluded?' off':''}" title="${title}" onclick="toggleSize('${role}',${o.wc},${o.hc})">${o.wc*S}×${o.hc*S} ${t('mm')}</button>`;
+    }
+    h += `</div>`;
+  }
+  list.innerHTML = h || `<div style="color:var(--t3);font-size:11px;line-height:1.5">${t('sizesEmpty')}</div>`;
+}
+
+// ═══════════════════════════════════════════════════════════════
+// FILAMENT COLORS
+// ═══════════════════════════════════════════════════════════════
+function renderPalette(){
+  const el = document.getElementById('palette');
+  if (!el) return;
+  el.innerHTML = FILAMENT_PALETTE.map(hex =>
+    `<div class="swatch${!ERASE_MODE && hex === PAINT_COLOR ? ' on' : ''}" style="background:${hex}" title="${hex}" onclick="selectColor('${hex}')">` +
+    `<span class="swdel" title="${t('delColor')}" onclick="event.stopPropagation();removeFilamentColor('${hex}')">×</span></div>`
+  ).join('');
+
+  const eb = document.getElementById('eraseBtn');
+  if (eb) eb.classList.toggle('on', ERASE_MODE);
+  const cc = document.getElementById('curColor');
+  if (cc) {
+    cc.style.background = ERASE_MODE ? 'transparent' : PAINT_COLOR;
+    cc.style.borderStyle = ERASE_MODE ? 'dashed' : 'solid';
+  }
+  const ch = document.getElementById('curColorHex');
+  if (ch) ch.textContent = ERASE_MODE ? t('erase') : PAINT_COLOR.toUpperCase();
+}
+
+function selectColor(hex){
+  if (!isHexColor(hex)) return;
+  PAINT_COLOR = hex.toLowerCase();
+  ERASE_MODE = false;
+  saveColors();
+  renderPalette();
+  drawColorView();
+}
+
+function addFilamentColor(){
+  const inp = document.getElementById('newColor');
+  if (!inp || !isHexColor(inp.value)) return;
+  const hex = inp.value.toLowerCase();
+  if (!FILAMENT_PALETTE.includes(hex)) FILAMENT_PALETTE.push(hex);
+  PAINT_COLOR = hex;
+  ERASE_MODE = false;
+  saveColors();
+  renderPalette();
+  drawColorView();
+}
+
+function removeFilamentColor(hex){
+  if (!isHexColor(hex)) return;
+  if (FILAMENT_PALETTE.length <= 1) return; // keep at least one palette entry
+  FILAMENT_PALETTE = FILAMENT_PALETTE.filter(c => c !== hex);
+  for (const [k, v] of Object.entries(PANEL_COLORS)) {
+    if (v === hex) delete PANEL_COLORS[k];
+  }
+  if (PAINT_COLOR === hex) PAINT_COLOR = FILAMENT_PALETTE[0];
+  saveColors();
+  renderPalette();
+  drawColorView();
+}
+
+function toggleErase(){
+  ERASE_MODE = !ERASE_MODE;
+  renderPalette();
+  drawColorView();
+}
+
+function clearModuleColors(){
+  if (!Object.keys(PANEL_COLORS).length) return;
+  if (!confirm(t('clearPaintConfirm'))) return;
+  PANEL_COLORS = {};
+  saveColors();
+  drawColorView();
+}
+
+// Symmetric colour presets. They paint panels (brackets stay unpainted) using
+// the current filament palette, so the result is always mirror-symmetric.
+function applyColorPreset(kind){
+  if (!G) return;
+  const pal = FILAMENT_PALETTE;
+  if (!pal.length) return;
+  const {wC, hC, lay} = G;
+  const cx0 = wC/2, cy0 = hC/2;
+  const next = {};
+  const pick = i => pal[((i % pal.length) + pal.length) % pal.length];
+
+  for (const m of lay.mods) {
+    if (m.role === 'mount') continue;
+    const cx = m.x + m.wC/2, cy = m.y + m.hC/2;
+    const dx = Math.abs(cx - cx0), dy = Math.abs(cy - cy0);
+    let idx = 0;
+    if (kind === 'gradient') {
+      const t = Math.min(1, Math.max(dx / Math.max(1, wC/2), dy / Math.max(1, hC/2)));
+      idx = Math.min(pal.length-1, Math.floor(t * pal.length));
+    } else if (kind === 'rings') {
+      idx = Math.floor(Math.max(dx, dy) / 2);
+    } else if (kind === 'frame') {
+      const edge = Math.min(m.x, m.y, wC - m.x - m.wC, hC - m.y - m.hC);
+      idx = Math.min(pal.length-1, edge);
+    } else if (kind === 'checker') {
+      idx = Math.floor(2*dx/S) + Math.floor(2*dy/S);
+    } else if (kind === 'stripes') {
+      idx = Math.floor(dy / 2);
+    } else if (kind === 'solid') {
+      next[colorKey(m)] = PAINT_COLOR || pal[0];
+      continue;
+    }
+    next[colorKey(m)] = pick(idx);
+  }
+  PANEL_COLORS = next;
+  saveColors();
+  drawColorView();
+}
+
+function paintModule(m, deferSave = false){
+  const k = colorKey(m);
+  if (ERASE_MODE) {
+    if (!(k in PANEL_COLORS)) return;
+    delete PANEL_COLORS[k];
+  } else {
+    if (!PAINT_COLOR || PANEL_COLORS[k] === PAINT_COLOR) return;
+    PANEL_COLORS[k] = PAINT_COLOR;
+  }
+  if (deferSave) COLOR_DIRTY = true; else saveColors();
+  drawColorView();
+}
+
+function isDarkColor(hex){
+  const n = parseInt(hex.slice(1), 16);
+  const r = (n >> 16) & 255, g = (n >> 8) & 255, b = n & 255;
+  return (0.299*r + 0.587*g + 0.114*b) < 140;
+}
+
+function drawColorView(){
+  if (!G) return;
+  const cvs = document.getElementById('cvcolor');
+  if (!cvs) return;
+  const {wC, hC, lay} = G;
+  const P = TC();
+  const maxW = canvasMaxW();
+  const maxH = Math.min(window.innerWidth <= 768 ? window.innerHeight - 80 : window.innerHeight - 200, 900);
+  const MX = 34, MY = 24, C = csz(wC, hC, maxW, maxH);
+  const CR = Math.min(C * .6, 11);
+  const tiny = C < 7, small = C < 11;
+
+  const W = wC*C + MX*2, H = hC*C + MY*2;
+  const dpr = Math.min(window.devicePixelRatio || 1, 2);
+  cvs.width = W*dpr; cvs.height = H*dpr;
+  cvs.style.width = W+'px'; cvs.style.height = H+'px';
+  const ctx = cvs.getContext('2d');
+  ctx.scale(dpr, dpr);
+
+  ctx.fillStyle = P.boardBg; ctx.fillRect(0, 0, W, H);
+  ctx.fillStyle = P.boardFill; rr(ctx, MX, MY, wC*C, hC*C, CR); ctx.fill();
+
+  if (C >= 11) {
+    const tw = wC>60?20:wC>30?10:wC>15?5:2, th = hC>60?20:hC>30?10:hC>15?5:2;
+    ctx.font = `${Math.max(7,Math.min(9,C/4))}px monospace`;
+    ctx.fillStyle = P.axisText; ctx.textAlign = 'center';
+    for (let x = 0; x <= wC; x += tw) ctx.fillText(x*S, MX+x*C, MY-6);
+    ctx.textAlign = 'right';
+    for (let y = 0; y <= hC; y += th) ctx.fillText(y*S, MX-5, MY+y*C+3);
+  }
+
+  ctx.save();
+  rr(ctx, MX, MY, wC*C, hC*C, CR); ctx.clip();
+
+  lay.mods.forEach((m, idx) => {
+    const px = MX+m.x*C, py = MY+m.y*C, pw = m.wC*C, ph = m.hC*C;
+    const assigned = PANEL_COLORS[colorKey(m)];
+    const fill = assigned || P.RF[m.role] || P.boardFill;
+    const stroke = assigned
+      ? (isDarkColor(assigned) ? 'rgba(255,255,255,.45)' : 'rgba(0,0,0,.45)')
+      : (P.RB[m.role] || P.boardStroke);
+    const br = m.role === 'corner' || m.role === 'mount' ? Math.min(CR*.7, 3) : 0.5;
+    ctx.fillStyle = fill;
+    rr(ctx, px+.5, py+.5, pw-1, ph-1, br); ctx.fill();
+    ctx.strokeStyle = stroke;
+    ctx.lineWidth = m.role === 'corner' || m.role === 'mount' ? 1.1 : .6;
+    rr(ctx, px+.5, py+.5, pw-1, ph-1, br); ctx.stroke();
+
+    if (!small && pw >= 14 && ph >= 9) {
+      const lbl = m.role === 'mount' ? '⚑' : `${m.wC*S}×${m.hC*S}`;
+      const fs = Math.max(6, Math.min(9, Math.min(pw/(lbl.length+1)*.9, ph/2.2)));
+      ctx.fillStyle = assigned
+        ? (isDarkColor(assigned) ? '#fffef0' : '#15130f')
+        : (P.RT[m.role] || P.RT.std);
+      ctx.font = `500 ${fs}px monospace`;
+      ctx.textAlign = 'center';
+      ctx.fillText(lbl, px+pw/2, py+ph/2+2);
+    }
+
+    if (idx === COLOR_HOVER) {
+      ctx.strokeStyle = P.hlStroke;
+      ctx.lineWidth = Math.max(1.5, Math.min(3, C*.1));
+      rr(ctx, px+.5, py+.5, pw-1, ph-1, br); ctx.stroke();
+    }
+  });
+
+  ctx.restore();
+  ctx.strokeStyle = P.boardStroke; ctx.lineWidth = 1.5;
+  rr(ctx, MX, MY, wC*C, hC*C, CR); ctx.stroke();
+
+  document.getElementById('csz').textContent = `${fmt(wC*S)} × ${fmt(hC*S)}`;
+
+  const hit = (e) => {
+    const rect = cvs.getBoundingClientRect();
+    const sx = cvs.width / dpr / rect.width;
+    const sy = cvs.height / dpr / rect.height;
+    const mx = (e.clientX - rect.left) * sx;
+    const my = (e.clientY - rect.top) * sy;
+    for (let i = 0; i < lay.mods.length; i++) {
+      const m = lay.mods[i];
+      const px = MX+m.x*C, py = MY+m.y*C, pw = m.wC*C, ph = m.hC*C;
+      if (mx >= px && mx <= px+pw && my >= py && my <= py+ph) return i;
+    }
+    return -1;
+  };
+
+  cvs.onpointerdown = (e) => {
+    const i = hit(e);
+    if (i < 0) return;
+    e.preventDefault();
+    if (cvs.setPointerCapture) { try { cvs.setPointerCapture(e.pointerId); } catch(err) {} }
+    COLOR_PAINTING = true;
+    COLOR_LAST = i;
+    paintModule(lay.mods[i]);
+  };
+  cvs.onpointermove = (e) => {
+    const i = hit(e);
+    if (i !== COLOR_HOVER) { COLOR_HOVER = i; drawColorView(); }
+    if (COLOR_PAINTING && i >= 0 && i !== COLOR_LAST) {
+      COLOR_LAST = i;
+      paintModule(lay.mods[i], true);
+    }
+  };
+  const stopPaint = () => {
+    COLOR_PAINTING = false;
+    COLOR_LAST = -1;
+    if (COLOR_DIRTY) { saveColors(); COLOR_DIRTY = false; }
+  };
+  cvs.onpointerup = stopPaint;
+  cvs.onpointercancel = stopPaint;
+  cvs.onpointerleave = () => {
+    stopPaint();
+    if (COLOR_HOVER !== -1) { COLOR_HOVER = -1; drawColorView(); }
+  };
+}
+
+// ═══════════════════════════════════════════════════════════════
+// CONFIG EXPORT / IMPORT
+// ═══════════════════════════════════════════════════════════════
+function cfgMsg(msg, isErr = false) {
+  const el = document.getElementById('cfgMsg');
+  if (!el) return;
+  el.textContent = msg;
+  el.style.color = isErr ? 'var(--acc)' : 'var(--t3)';
+}
+
+function exportConfig() {
+  const wsEl = document.getElementById('ws');
+  const hsEl = document.getElementById('hs');
+  const densEl = document.getElementById('dens');
+  const cfg = {
+    app: 'skadis-3.0-planner',
+    version: 1,
+    savedAt: new Date().toISOString(),
+    variant: VARK,
+    widthCells: +wsEl.value,
+    heightCells: +hsEl.value,
+    density: +densEl.value,
+    mountExclusions: {
+      columns: [...EXCL.x].sort((a,b)=>a-b),
+      rows: [...EXCL.y].sort((a,b)=>a-b),
+      points: [...EXCL.p].sort()
+    },
+    sizeExclusions: [...EXCL_SIZES].sort()
+  };
+  cfg.colors = {
+    palette: [...FILAMENT_PALETTE],
+    selected: PAINT_COLOR,
+    assignments: {...PANEL_COLORS}
+  };
+  const blob = new Blob([JSON.stringify(cfg, null, 2)], {type:'application/json'});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = `skadis-config-${cfg.widthCells}x${cfg.heightCells}.json`;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  setTimeout(() => URL.revokeObjectURL(url), 1000);
+  cfgMsg(t('cfgExported'));
+}
+
+function importConfig(ev) {
+  const input = ev.target;
+  const file = input.files && input.files[0];
+  input.value = '';
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = () => {
+    try {
+      const cfg = JSON.parse(String(reader.result));
+      if (!cfg || typeof cfg !== 'object' || Array.isArray(cfg)) throw new Error('bad config');
+      applyConfig(cfg);
+    } catch(e) {
+      cfgMsg(t('cfgErr'), true);
+    }
+  };
+  reader.onerror = () => cfgMsg(t('cfgErr'), true);
+  reader.readAsText(file);
+}
+
+function applyConfig(cfg) {
+  const wsEl = document.getElementById('ws');
+  const hsEl = document.getElementById('hs');
+  const densEl = document.getElementById('dens');
+  const toInt = (v, min, max, def) => {
+    const n = Math.round(Number(v));
+    return Number.isFinite(n) ? Math.max(min, Math.min(max, n)) : def;
+  };
+
+  const width   = toInt(cfg.widthCells,  +wsEl.min,  +wsEl.max,  +wsEl.value);
+  const height  = toInt(cfg.heightCells, +hsEl.min,  +hsEl.max,  +hsEl.value);
+  const density = toInt(cfg.density ?? cfg.mountDensity, +densEl.min, +densEl.max, +densEl.value);
+
+  if (['mini','standard','xl'].includes(cfg.variant) && cfg.variant !== VARK) {
+    setVariant(cfg.variant);
+  }
+  wsEl.value = width;
+  hsEl.value = height;
+  densEl.value = density;
+
+  const me = (cfg.mountExclusions && typeof cfg.mountExclusions === 'object') ? cfg.mountExclusions : {};
+  const numList = v => Array.isArray(v)
+    ? v.map(Number).filter(n => Number.isInteger(n) && n >= 0)
+    : [];
+  const pointList = Array.isArray(me.points) ? me.points : [];
+
+  EXCL.x = new Set(numList(me.columns ?? cfg.excludedColumns));
+  EXCL.y = new Set(numList(me.rows ?? cfg.excludedRows));
+  EXCL.p = new Set(pointList.filter(k => typeof k === 'string' && /^\d+,\d+$/.test(k)));
+  EXCL_SIZES = new Set(
+    (Array.isArray(cfg.sizeExclusions) ? cfg.sizeExclusions : [])
+      .filter(k => typeof k === 'string' && /^(std|topbot|side)\|\d+x\d+$/.test(k))
+  );
+
+  const cc = (cfg.colors && typeof cfg.colors === 'object' && !Array.isArray(cfg.colors)) ? cfg.colors : {};
+  const pal = Array.isArray(cc.palette) ? cc.palette.filter(isHexColor).map(c => c.toLowerCase()) : [];
+  FILAMENT_PALETTE = pal.length ? [...new Set(pal)] : [...DEFAULT_PALETTE];
+  PANEL_COLORS = {};
+  if (cc.assignments && typeof cc.assignments === 'object' && !Array.isArray(cc.assignments)) {
+    for (const [k, v] of Object.entries(cc.assignments)) {
+      if (!isHexColor(v) || !/^(std|topbot|side|corner|mount)\|\d+,\d+,\d+x\d+$/.test(k)) continue;
+      const hex = v.toLowerCase();
+      PANEL_COLORS[k] = hex;
+      if (!FILAMENT_PALETTE.includes(hex)) FILAMENT_PALETTE.push(hex);
+    }
+  }
+  PAINT_COLOR = isHexColor(cc.selected) && FILAMENT_PALETTE.includes(cc.selected.toLowerCase())
+    ? cc.selected.toLowerCase()
+    : FILAMENT_PALETTE[0];
+  ERASE_MODE = false;
+  COLOR_HOVER = -1;
+  saveColors();
+
+  saveExclusions();
+  saveSizeExclusions();
+  go();
+  cfgMsg(t('cfgImported', width, height));
 }
 
 function row(fill, border, n, name, sub, isCircle=false, isDiam=false, hk='') {
@@ -971,7 +1909,7 @@ function rr(ctx,x,y,w,h,r){
 function diam(ctx,cx,cy,r){ctx.beginPath();ctx.moveTo(cx,cy-r);ctx.lineTo(cx+r,cy);ctx.lineTo(cx,cy+r);ctx.lineTo(cx-r,cy);ctx.closePath();}
 function csz(wC,hC,maxW,maxH){return Math.max(5,Math.min(34,Math.floor(Math.min((maxW-80)/wC,(maxH-60)/hC))));}
 function canvasMaxW(){return Math.min(window.innerWidth<=768?window.innerWidth-36:window.innerWidth-340,1500);}
-function fmt(mm){if(mm>=1000)return(mm/1000).toFixed(2).replace(/\.?0+$/,'')+'м';if(mm>=100)return Math.round(mm/10)+'см';return mm+'мм';}
+function fmt(mm){if(mm>=1000)return(mm/1000).toFixed(2).replace(/\.?0+$/,'')+' '+t('unitM');if(mm>=100)return Math.round(mm/10)+' '+t('unitCm');return mm+' '+t('mm');}
 
 // ═══════════════════════════════════════════════════════════════
 // FRONT VIEW DRAW
@@ -1061,11 +1999,11 @@ function drawBoard(wC,hC,lay,pts){
     }
   }
 
-  // Seam lines
-  if(!tiny){
+  // Seam lines — only along actual module edges
+  if(!tiny && lay.seams){
     ctx.setLineDash([1,3]);ctx.strokeStyle=P.seamLine;ctx.lineWidth=.4;
-    for(const x of lay.colB)if(x>0&&x<wC){ctx.beginPath();ctx.moveTo(MX+x*C,MY);ctx.lineTo(MX+x*C,MY+hC*C);ctx.stroke();}
-    for(const y of lay.rowB)if(y>0&&y<hC){ctx.beginPath();ctx.moveTo(MX,MY+y*C);ctx.lineTo(MX+wC*C,MY+y*C);ctx.stroke();}
+    for(const s of lay.seams.v){ctx.beginPath();ctx.moveTo(MX+s.x*C,MY+s.y1*C);ctx.lineTo(MX+s.x*C,MY+s.y2*C);ctx.stroke();}
+    for(const s of lay.seams.h){ctx.beginPath();ctx.moveTo(MX+s.x1*C,MY+s.y*C);ctx.lineTo(MX+s.x2*C,MY+s.y*C);ctx.stroke();}
     ctx.setLineDash([]);
   }
 
@@ -1221,7 +2159,7 @@ function drawMount(wC,hC,lay,pts){
       ctx.fillStyle=P.cornerDot;ctx.beginPath();ctx.arc(px,py,hr,0,Math.PI*2);ctx.fill();
       ctx.strokeStyle=P.cornerRing;ctx.lineWidth=.7;ctx.beginPath();ctx.arc(px,py,hr*1.6,0,Math.PI*2);ctx.stroke();
       if(C>=20){ctx.fillStyle=P.cornerLbl;ctx.font='bold 7px monospace';ctx.textAlign='center';
-        const oT=p.y===0;ctx.fillText('corner',px,oT?py-s/2-6:py+s/2+9);}
+        const oT=p.y===0;ctx.fillText(t('shortCorner'),px,oT?py-s/2-6:py+s/2+9);}
     } else if(p.key==='side'||p.key==='topbot'){
       const sw=isH?C*.64:C*.38,sh=isH?C*.38:C*.64;
       ctx.fillStyle=isH?P.topbotFill:P.sideFill;ctx.strokeStyle=isH?P.topbotStroke:P.sideStroke;ctx.lineWidth=.9;
@@ -1232,7 +2170,7 @@ function drawMount(wC,hC,lay,pts){
       ctx.setLineDash([]);
       ctx.fillStyle=isH?P.topbotDot:P.sideDot;ctx.beginPath();ctx.arc(px,py,Math.max(1.2,Math.min(sw,sh)*.12),0,Math.PI*2);ctx.fill();
       if(C>=22){
-        const lbl=isH?'top/bot':'side';
+        const lbl=isH?t('shortTopbot'):t('shortSide');
         const oL=p.x===0,oR=p.x===wC,oT=p.y===0,oB=p.y===hC;
         ctx.fillStyle=isH?P.topbotLbl:P.sideLbl;ctx.font='6px monospace';ctx.textAlign='center';
         const lx=oL?px-sw/2-8:oR?px+sw/2+8:px;
@@ -1245,7 +2183,7 @@ function drawMount(wC,hC,lay,pts){
       ctx.beginPath();ctx.rect(px-s/2,py-arm/2,s,arm);ctx.fill();ctx.stroke();
       ctx.beginPath();ctx.rect(px-arm/2,py-s/2,arm,s);ctx.fill();ctx.stroke();
       ctx.fillStyle=P.midDot;ctx.beginPath();ctx.arc(px,py,Math.max(1,s*.09),0,Math.PI*2);ctx.fill();
-      if(C>=22){ctx.fillStyle=P.midLbl;ctx.font='6px monospace';ctx.textAlign='center';ctx.fillText('mid',px,py+s/2+8);}
+      if(C>=22){ctx.fillStyle=P.midLbl;ctx.font='6px monospace';ctx.textAlign='center';ctx.fillText(t('shortMid'),px,py+s/2+8);}
     }
   }
   ctx.restore();ctx.strokeStyle=P.rearStroke;ctx.lineWidth=1.5;rr(ctx,MX,MY,wC*C,hC*C,CR);ctx.stroke();
@@ -1345,7 +2283,7 @@ function renderCatalog(b, pts, lay){
     <circle cx="11" cy="39" r="2.5" fill="${_P.svgConnStroke}"/><circle cx="39" cy="39" r="2.5" fill="${_P.svgConnStroke}"/>
     <rect x="11" y="41" width="28" height="4" rx="1" fill="${_P.svgConnBar}" stroke="${_P.svgConnStroke}" stroke-width=".5"/>
   </svg></div>
-  <div class="pcn">Connector</div><div class="pcs">20×20×3.5mm</div>
+  <div class="pcn">${t('partConnector')}</div><div class="pcs">20×20×3.5 ${t('mm')}</div>
   <div class="pcp">${t('plate')} ${ci.plate} · ${ci.perSheet} ${t('perSheet')}</div><div class="pcc">×${b.connCnt}</div></div></div>`;
 
   h+=`<div class="cat-h">${t('catMountH')}</div>`;
@@ -1355,8 +2293,8 @@ function renderCatalog(b, pts, lay){
   for(const r of mrows){
     if(!r.n)continue;
     const M=MOUNTS[r.key];
-    h+=mountCard(M.bracket,'bracket',r.n,`${t('plate')} `+M.bpl,r.col);
-    h+=mountCard(M.dist,'dist.conn.',r.n,`${t('plate')} `+M.dpl,_mc.mid);
+    h+=mountCard(t(M.bracketKey),t('roleBracket'),r.n,`${t('plate')} `+M.bpl,r.col);
+    h+=mountCard(t(M.distKey),t('roleDistConn'),r.n,`${t('plate')} `+M.dpl,_mc.mid);
   }
   h+=`</div>`;
   document.getElementById('catc').innerHTML=h;
@@ -1371,7 +2309,7 @@ function pCard(wMm,hMm,role,n,note=''){
     if(role==='corner'&&hcols===1&&hrows===1)slots+=`<circle cx="${hx.toFixed(1)}" cy="${hy.toFixed(1)}" r="${Math.max(1.5,Math.min(pw,ph)*.14)}" fill="${TC().pSlotCorner}"/>`;
     else slots+=`<ellipse cx="${hx.toFixed(1)}" cy="${hy.toFixed(1)}" rx="${Math.max(.8,pw/hcols*.078)}" ry="${Math.max(1.4,ph/hrows*.14)}" fill="${TC().pSlotStd}"/>`;
   }
-  const lbl={corner:'Corner module',topbot:'Top/bot module',side:'Side module',std:'Module'}[role];
+  const lbl={corner:t('partCorner'),topbot:t('partTopbot'),side:t('partSide'),std:t('partStd')}[role];
   // Exact plate number for this specific size
   const pf = role==='corner' ? null : plateFor(role, wMm, hMm);
   const plLabel = pf ? `${t('plate')} ${pf.plate} · ${shortFile(pf.file)}` : note;
@@ -1379,7 +2317,7 @@ function pCard(wMm,hMm,role,n,note=''){
     <rect x="${ox.toFixed(1)}" y="${oy.toFixed(1)}" width="${pw.toFixed(1)}" height="${ph.toFixed(1)}" rx="2" fill="${TC().RF[role]}" stroke="${TC().RB[role]}" stroke-width=".8"/>
     ${slots}<text x="25" y="${(oy+ph+12).toFixed(1)}" font-size="7" fill="${TC().RT[role]}" text-anchor="middle" font-family="monospace">${wMm}×${hMm}</text>
   </svg></div>
-  <div class="pcn">${lbl}<br>${wMm}×${hMm}мм</div><div class="pcs">${wMm}×${hMm}×5.2мм</div>
+  <div class="pcn">${lbl}<br>${wMm}×${hMm} ${t('mm')}</div><div class="pcs">${wMm}×${hMm}×5.2 ${t('mm')}</div>
   <div class="pcp">${plLabel}</div><div class="pcc">×${n}</div></div>`;
 }
 function mountCard(name,size,n,plate,col,bdr){
@@ -1398,10 +2336,11 @@ function mountCard(name,size,n,plate,col,bdr){
 // TABS & UPDATE
 // ═══════════════════════════════════════════════════════════════
 function showTab(name){
-  ['board','mount','cat'].forEach((t,i)=>{document.querySelectorAll('.tab')[i].classList.toggle('on',t===name);document.getElementById('v'+t).classList.toggle('on',t===name);});
+  ['board','mount','cat','color'].forEach((t,i)=>{document.querySelectorAll('.tab')[i].classList.toggle('on',t===name);document.getElementById('v'+t).classList.toggle('on',t===name);});
   if(!G)return;
   if(name==='mount') drawMount(G.wC,G.hC,G.lay,G.pts);
   if(name==='cat')   renderCatalog(G.bom, G.pts, G.lay);
+  if(name==='color') { renderPalette(); drawColorView(); }
 }
 
 function go(){
@@ -1417,7 +2356,7 @@ function go(){
   document.getElementById('wh').textContent=`${wC} ${t('cells')} · ${fmt(wC*S)}`;
   document.getElementById('hh').textContent=`${hC} ${t('cells')} · ${fmt(hC*S)}`;
   document.getElementById('dv').textContent=t('densNames')[di];
-  document.getElementById('di').textContent=`↔ ${D.h*S}mm  ↕ ${D.v*S}mm`;
+  document.getElementById('di').textContent=`↔ ${D.h*S} ${t('mm')}  ↕ ${D.v*S} ${t('mm')}`;
 
   const mp  = computeMountPts(wC,hC,D.h,D.v);
   const pts = mp.pts;
@@ -1427,6 +2366,8 @@ function go(){
   G = {wC,hC,lay,pts,bom:b,xPts:mp.xPts,yPts:mp.yPts};
 
   renderExclusions(mp.xPts, mp.yPts, D);
+  renderSizeExclusions(lay);
+  renderPalette();
 
   drawBoard(wC,hC,lay,pts);
   renderBOM(b, lay);
@@ -1438,18 +2379,21 @@ function go(){
   document.getElementById('st3').textContent=b.connCnt;
   document.getElementById('st4').textContent=b.total;
   document.getElementById('st5').textContent=pts.length;
+  document.getElementById('mountPtsLabel').textContent=t('mountPtsLabel', pts.length);
   const area=wC*S*hC*S;
-  document.getElementById('st6').textContent=area>=1e6?(area/1e6).toFixed(2)+'м²':Math.round(area/100)+'см²';
+  document.getElementById('st6').textContent=area>=1e6?(area/1e6).toFixed(2)+' '+t('unitM2'):Math.round(area/100)+' '+t('unitCm2');
 
   if(document.getElementById('vmount').classList.contains('on')) drawMount(wC,hC,lay,pts);
   if(document.getElementById('vcat').classList.contains('on'))   renderCatalog(b,pts,lay);
+  if(document.getElementById('vcolor').classList.contains('on')) drawColorView();
 }
 
 DARK = localStorage.getItem('skadis-theme') !== 'light';
 if (!DARK) document.documentElement.setAttribute('data-theme', 'light');
 document.getElementById('themebtn').textContent = DARK ? '\u2600' : '\u263E';
 
-LANG = localStorage.getItem('skadis-lang') || 'en';
+LANG = detectLang();
+document.documentElement.lang = LANG;
 
 const _sw = localStorage.getItem('skadis-width');
 const _sh = localStorage.getItem('skadis-height');
@@ -1459,6 +2403,8 @@ if (_sh) document.getElementById('hs').value = _sh;
 if (_sd) document.getElementById('dens').value = _sd;
 
 loadExclusions();
+loadSizeExclusions();
+loadColors();
 applyI18n();
 setVariant(localStorage.getItem('skadis-variant') || 'mini');
 setExclMode('off');

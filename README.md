@@ -8,22 +8,28 @@ Interactive layout calculator for the **IKEA SKADIS Modular Pegboard 3.0** — a
 
 ## What it does
 
-- **Board layout** — visual front view of your board with all module types color-coded
+- **Board layout** — visual front view of your board with all module types color-coded, mirror-symmetric around the board centre
 - **Wall mounting** — rear view showing bracket placement
 - **Parts catalog** — every part with exact Bambu Studio plate number
 - **Print list** — complete bill of materials, auto-calculated for your board size
 - **Interactive highlights** — hover a part in the list to highlight it on the board, and vice versa
+- 🆕 **Panel size exclusions** *(added 2026-11-15)* — click any module size (e.g. 240×240mm) to exclude exactly that panel from the layout, without touching the other sizes
+- 🆕 **Filament colors** *(added 2026-11-15)* — paint every panel with a filament color, build a palette, use symmetric colour presets; saved in the config
+- 🆕 **Config export / import** *(added 2026-11-15)* — save the whole plan (variant, board size, density, all exclusions, colours) to a JSON file and load it back later or on another device
 - 🆕 **Mount exclusions** *(added 2026-04-11)* — skip individual mount points, whole rows, or whole columns (e.g. when a wire runs behind that part of the wall)
 
 ## How to use
 
 1. Choose **print bed variant** — Mini, Standard, or XL (see below)
 2. Set board **width** and **height** using the sliders (in 40mm cells)
-3. Adjust **mount density** — how frequently the board is anchored to the wall
-4. Switch between **Board layout**, **Wall mounting**, and **Parts catalog** tabs
-5. Use the **Print list** in the sidebar as your shopping/printing checklist
-6. Toggle **RU / EN** in the top-right corner to switch language
-7. Toggle **☀ / ☾** to switch between dark and light themes
+3. In **Panel sizes**, click any size your printer can't handle to exclude it (see below)
+4. Adjust **mount density** — how frequently the board is anchored to the wall
+5. Switch between **Board layout**, **Wall mounting**, **Parts catalog** and **Filament colors** tabs
+6. Paint panels with filament colours in **Filament colors** (or apply a preset)
+7. Use the **Print list** in the sidebar as your shopping/printing checklist
+8. Use **Configuration → Export / Import** to save or restore the whole plan
+9. Toggle **RU / EN** in the top-right corner to switch language (the first visit follows the browser locale)
+10. Toggle **☀ / ☾** to switch between dark and light themes
 
 ## Print bed variants
 
@@ -36,6 +42,48 @@ The 3D model comes in three variants for different printer build plate sizes. Th
 | **XL** | 320×320mm (8×8 cells) | ~350×350mm | `XL_comp.3mf` | 35 plates |
 
 Standard includes all mini plates (for modules ≤160mm) plus larger sizes. XL includes mini + standard + extra-large sizes.
+
+### Panel size exclusions 🆕
+
+> **New in 2026-11-15** — drop individual panel sizes your printer can't produce, without reducing everything else.
+
+The **Panel sizes** panel lists every module size currently used by the layout, grouped into *Center*, *Top & bottom* and *Side*. Click a size to exclude exactly that panel — it is struck through and the planner re-tiles the board using the remaining sizes. Click it again to allow it back.
+
+For example: a 240×200mm print bed can handle 240×200mm and 200×240mm panels, but not 240×240mm. Exclude **240×240** and the planner will re-tile that area from other sizes (for example 200×240 and 120×240) while 240×40mm top/bottom modules stay available.
+
+Exclusions are stored in `localStorage` (`skadis-excl-sizes`) and survive board-size and variant changes. If a size becomes impossible in a smaller module set it is simply hidden until you switch back.
+
+Technically, the layout picks per-axis module sizes whose cross-product avoids every excluded `width×height` pair. Top/bottom and side borders share the same column/row sets as the center, so seams stay aligned across the whole board.
+
+The mount grid is built so that the spans between mounts form a palindrome around the board centre. The number of mount spans is chosen to minimise the total panel count, then larger panels win. Mirrored spans reuse mirrored tilings and the central span is tiled symmetrically, so the front view is left-right and top-bottom symmetric. Connectors and seam lines are drawn only at real module corners/edges, so a mixed-size layout never shows floating connectors.
+
+### Config export / import 🆕
+
+> **New in 2026-11-15** — save a plan and restore it later, or move it between browsers/devices.
+
+**Configuration → Export** downloads a `skadis-config-<width>x<height>.json` file containing:
+
+- module set (Mini / Standard / XL)
+- board width and height
+- mount density
+- mount exclusions (columns, rows, points)
+- excluded panel sizes
+- filament palette, selected colour and per-panel paint assignments
+
+**Configuration → Import** loads such a file, validates it, clamps board dimensions to the slider range and rebuilds the layout. Invalid or non-JSON files are rejected with an error message instead of changing the current plan.
+
+### Filament colours 🆕
+
+> **New in 2026-11-15** — plan which filament each printed panel uses.
+
+The **Filament colors** tab shows the front view with paintable panels:
+
+- the palette starts with eight common filament colours; use the colour picker + **Add color** to add your own and `×` on a swatch to remove it (removing a colour also clears its painted panels);
+- select a colour and **click or drag** over panels to paint them; **Erase** removes paint, **Clear paint** resets everything;
+- panel assignments are stored as `role|x,y,width×height`, so a repaint only applies to a panel that still exists in the current layout;
+- presets paint a whole symmetric scheme in one click: **Gradient**, **Rings**, **Frame**, **Checker**, **Stripes**, **Solid**. Brackets stay unpainted so the mounting points remain visible.
+
+Colours are saved in `localStorage` (`skadis-colors`) and included in the exported config. Like all other plan data, they survive reloads.
 
 ### Plate mapping per variant
 
@@ -111,6 +159,8 @@ The planner is a **single self-contained HTML file** — no dependencies, no bui
 |---|---|
 | `index.html` | The planner app |
 | `README.md` | This file |
+| `AGENTS.md` | Developer/agent notes: architecture, invariants, testing checklist |
+| `docs/edge-inset-future.md` | Postponed edge-inset feature notes |
 
 ## 3D model
 
