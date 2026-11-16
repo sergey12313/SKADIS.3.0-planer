@@ -20,19 +20,22 @@ unless explicitly requested.
 
 ## Mental model of the layout engine
 
-`go()` is the entry point. It reads the UI state (variant, width, height, density),
+`go()` is the entry point. It reads the UI state (variant, width, height, mount spacing/row count),
 then runs:
 
-1. `computeMountPts(wC, hC, gapH, gapV)` → `pickBounds(total, gap)`
-   Builds a **symmetric mount grid**. `pickBounds` creates palindromic spans between
-   mounts (via `balancedPalindromic`) and searches the number of spans to minimise the
-   total panel count. It returns boundary coordinates `[0, ..., total]`.
+1. `computeMountPts(wC, hC, gapH, rowsV)` → `pickBounds(total, gap)` / `pickVerticalRows(total, count)`
+   Builds the mount grid. `pickBounds` creates palindromic horizontal spans between
+   mounts; `pickVerticalRows` distributes the requested number of interior rows evenly
+   between the fixed top and bottom rows.
 2. `computeLayout(wC, hC, pts)`
    - `bestAxisMasks(...)` chooses one allowed **column-size set** and one **row-size set**.
      Top/bottom borders use the column set; left/right borders use the row set, so seams
      stay aligned across the whole board.
    - `segsWithAllowed(...)` tiles each span. Mirrored span pairs get mirrored tilings;
      the central span uses `palTile` and is therefore a palindrome.
+   - Center rows and columns use shared cuts across the board, including rows with
+     brackets. Do not tile rows independently or merge neighboring panels: panel edges
+     and connector positions must remain aligned as continuous vertical/horizontal lines.
    - `computeConnectors(...)` / `computeSeams(...)` derive ornaments from actual modules.
 3. `computeBOM(lay, pts)` groups modules, counts brackets and connectors, and resolves
    plate numbers via `plateFor()` / `connectorInfo()`.
@@ -52,6 +55,13 @@ then runs:
 - **Size exclusions** (`EXCL_SIZES`, keys `role|wCxhC`) must never appear in
   `G.lay.mods`. The 1-cell (40 mm) size is always allowed because mount cells and short
   forced spans depend on it; the UI hides 40×40 toggles for this reason.
+- **Preferred sizes** (`PREF_SIZES`) guide module tiling but must not change the
+  explicitly selected vertical mount-row count. They must never break coverage or
+  exclusions; if a preferred size is not produced, show `szPrefWarn`. The same size
+  cannot be both excluded and preferred.
+- **Grid continuity**: use common column and row cuts throughout the board. Do not
+  merge adjacent modules or independently tile mount rows; either breaks straight
+  panel-edge lines and removes expected connector points.
 - **Connectors** must only be placed at real module corners. **Seams** must only follow
   real module edges. Never go back to a global boundary cross-product: it creates
   floating dots/lines when rows and columns do not align.
@@ -69,19 +79,22 @@ then runs:
 |---|---|
 | `skadis-variant` | `mini` / `standard` / `xl` |
 | `skadis-width`, `skadis-height` | board size in cells |
-| `skadis-density` | density slider value (1–5) |
+| `skadis-gap-h` | horizontal mount gap in cells (40 mm steps); old density keys are migrated as fallbacks |
+| `skadis-rows-v` | number of interior vertical mount rows; legacy `skadis-gap-v` and density keys are migrated |
 | `skadis-lang` | `en` / `ru` |
 | `skadis-theme` | `light` or empty for dark |
 | `skadis-excl` | JSON `{x:[], y:[], p:["x,y"]}` mount exclusions |
 | `skadis-excl-sizes` | JSON array of `role|wCxhC` panel-size exclusions |
+| `skadis-pref-sizes` | JSON array of preferred `role|wCxhC` panel sizes |
 | `skadis-colors` | JSON `{palette:["#rrggbb"], selected, paint:{"role|x,y,wCxhC":"#rrggbb"}}` |
 
 Exported config (`exportConfig`, version 1) contains: `variant`, `widthCells`,
-`heightCells`, `density`, `mountExclusions {columns, rows, points}`,
-`sizeExclusions`, and `colors {palette, selected, assignments}`. `importConfig`
-parses a file, then `applyConfig` validates/clamps values and rebuilds the layout.
-Keep both import and export in sync if the schema changes; bump `version` when
-incompatible.
+`heightCells`, `gapH`, `verticalRows` (legacy `gapV`, `densityH`, `densityV`
+and `density` are accepted on import),
+`mountExclusions {columns, rows, points}`, `sizeExclusions`, `preferredSizes`, and
+`colors {palette, selected, assignments}`. `importConfig` parses a file, then
+`applyConfig` validates/clamps values and rebuilds the layout. Keep both import
+and export in sync if the schema changes; bump `version` when incompatible.
 
 ### Filament colour rules
 

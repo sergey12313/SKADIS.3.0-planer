@@ -13,9 +13,9 @@ Interactive layout calculator for the **IKEA SKADIS Modular Pegboard 3.0** — a
 - **Parts catalog** — every part with exact Bambu Studio plate number
 - **Print list** — complete bill of materials, auto-calculated for your board size
 - **Interactive highlights** — hover a part in the list to highlight it on the board, and vice versa
-- 🆕 **Panel size exclusions** *(added 2026-11-15)* — click any module size (e.g. 240×240mm) to exclude exactly that panel from the layout, without touching the other sizes
+- 🆕 **Panel size exclusions & priorities** *(added 2026-11-15)* — exclude sizes your printer can't handle, or star sizes you already have so the layout tries to use them
 - 🆕 **Filament colors** *(added 2026-11-15)* — paint every panel with a filament color, build a palette, use symmetric colour presets; saved in the config
-- 🆕 **Config export / import** *(added 2026-11-15)* — save the whole plan (variant, board size, density, all exclusions, colours) to a JSON file and load it back later or on another device
+- 🆕 **Config export / import** *(added 2026-11-15)* — save the whole plan (variant, board size, mount spacing and row count, all exclusions, colours) to a JSON file and load it back later or on another device
 - 🆕 **Mount exclusions** *(added 2026-04-11)* — skip individual mount points, whole rows, or whole columns (e.g. when a wire runs behind that part of the wall)
 
 ## How to use
@@ -23,7 +23,7 @@ Interactive layout calculator for the **IKEA SKADIS Modular Pegboard 3.0** — a
 1. Choose **print bed variant** — Mini, Standard, or XL (see below)
 2. Set board **width** and **height** using the sliders (in 40mm cells)
 3. In **Panel sizes**, click any size your printer can't handle to exclude it (see below)
-4. Adjust **mount density** — how frequently the board is anchored to the wall
+4. Set **horizontal mount spacing** and choose the **number of interior vertical mount rows**; top and bottom rows stay fixed
 5. Switch between **Board layout**, **Wall mounting**, **Parts catalog** and **Filament colors** tabs
 6. Paint panels with filament colours in **Filament colors** (or apply a preset)
 7. Use the **Print list** in the sidebar as your shopping/printing checklist
@@ -43,11 +43,13 @@ The 3D model comes in three variants for different printer build plate sizes. Th
 
 Standard includes all mini plates (for modules ≤160mm) plus larger sizes. XL includes mini + standard + extra-large sizes.
 
-### Panel size exclusions 🆕
+### Panel sizes: exclusions & priorities 🆕
 
 > **New in 2026-11-15** — drop individual panel sizes your printer can't produce, without reducing everything else.
 
 The **Panel sizes** panel lists every module size currently used by the layout, grouped into *Center*, *Top & bottom* and *Side*. Click a size to exclude exactly that panel — it is struck through and the planner re-tiles the board using the remaining sizes. Click it again to allow it back.
+
+Use the **star** next to a size to make it a priority: the planner will try to adjust the mount grid and size sets so that this panel is actually used (useful when you already have some panels printed). Priorities may widen a mount span or make the layout asymmetric when that is the only way to include them; symmetry is still preferred whenever a symmetric grid can contain all priorities. A warning appears only if a priority size cannot fit at all. Excluding and prioritising the same size are mutually exclusive; **clear** resets both.
 
 For example: a 240×200mm print bed can handle 240×200mm and 200×240mm panels, but not 240×240mm. Exclude **240×240** and the planner will re-tile that area from other sizes (for example 200×240 and 120×240) while 240×40mm top/bottom modules stay available.
 
@@ -55,7 +57,7 @@ Exclusions are stored in `localStorage` (`skadis-excl-sizes`) and survive board-
 
 Technically, the layout picks per-axis module sizes whose cross-product avoids every excluded `width×height` pair. Top/bottom and side borders share the same column/row sets as the center, so seams stay aligned across the whole board.
 
-The mount grid is built so that the spans between mounts form a palindrome around the board centre. The number of mount spans is chosen to minimise the total panel count, then larger panels win. Mirrored spans reuse mirrored tilings and the central span is tiled symmetrically, so the front view is left-right and top-bottom symmetric. Connectors and seam lines are drawn only at real module corners/edges, so a mixed-size layout never shows floating connectors.
+The mount grid is built so that the spans between mounts form a palindrome around the board centre. The same vertical and horizontal cuts are used across the whole board, including rows with brackets, so panel edges and connector positions stay aligned in continuous lines. Horizontal mount spacing is set in millimetres; vertical mounting is controlled directly by the number of interior rows. **Preferred panel sizes** influence panel tiling but do not add or remove vertical mount rows. The layout does not merge neighboring panels, because each panel boundary is part of the continuous grid.
 
 ### Config export / import 🆕
 
@@ -65,9 +67,10 @@ The mount grid is built so that the spans between mounts form a palindrome aroun
 
 - module set (Mini / Standard / XL)
 - board width and height
-- mount density
+- horizontal mount spacing and number of vertical mount rows
 - mount exclusions (columns, rows, points)
 - excluded panel sizes
+- preferred panel sizes (★)
 - filament palette, selected colour and per-panel paint assignments
 
 **Configuration → Import** loads such a file, validates it, clamps board dimensions to the slider range and rebuilds the layout. Invalid or non-JSON files are rejected with an error message instead of changing the current plan.

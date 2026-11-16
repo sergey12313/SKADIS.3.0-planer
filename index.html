@@ -59,6 +59,13 @@ aside{background:var(--s1);border-right:1px solid var(--b1);display:flex;flex-di
 .szchip:hover{border-color:var(--acc2);color:var(--t1)}
 .szchip.off{background:transparent;border:1px dashed var(--acc2);color:var(--t3);text-decoration:line-through}
 .szchip.off:hover{border-color:var(--acc);color:var(--acc2)}
+.szitem{display:inline-flex;align-items:center;gap:2px}
+.szstar{font-size:12px;line-height:1;background:none;border:1px solid transparent;border-radius:3px;padding:2px 3px;color:var(--t3);cursor:pointer;transition:all .12s}
+.szstar:hover{color:var(--acc2);border-color:var(--b2)}
+.szstar.on{color:var(--acc)}
+.szchip.pref{border-color:var(--acc);color:var(--t1)}
+.szwarn{font-size:11px;color:var(--acc2);line-height:1.5;margin-top:8px;padding:6px 8px;background:var(--bg);border:1px solid var(--acc2);border-radius:4px}
+.szscroll{max-height:250px;overflow-y:auto;padding-right:2px;scrollbar-width:thin}
 .cfgbtn{flex:1;font-family:var(--mono);font-size:11px;background:var(--s3);border:1px solid var(--b1);border-radius:4px;padding:6px 8px;color:var(--t1);cursor:pointer;transition:all .12s}
 .cfgbtn:hover{border-color:var(--acc);color:var(--acc)}
 .cfgbtn.on{background:var(--acc);border-color:var(--acc);color:#fff}
@@ -165,14 +172,18 @@ canvas{display:block}
   </div>
   <div class="panel">
     <div class="ptitle" data-i18n="mountDensity">Mount density</div>
-    <div class="srow" style="margin-bottom:3px">
-      <label data-i18n="span">Span</label>
-      <input type="range" id="dens" min="1" max="5" value="3" oninput="go()">
-      <div class="vbadge" id="dv">—</div>
+    <div class="srow">
+      <label data-i18n="densH">Horiz.</label>
+      <input type="range" id="gaph" min="4" max="20" step="1" value="10" oninput="go()">
+      <div class="vbadge" id="ghv">—</div>
     </div>
-    <div class="density-labels"><span data-i18n="dense">Dense</span><span data-i18n="sparse">Sparse</span></div>
+    <div class="srow">
+      <label data-i18n="densV">Vert.</label>
+      <input type="range" id="rowsv" min="0" max="4" step="1" value="2" oninput="go()">
+      <div class="vbadge" id="gvv">—</div>
+    </div>
     <div class="density-info" id="di"></div>
-    <div style="font-size:11px;color:var(--t3);margin-top:6px;line-height:1.6" data-i18n="vertHint">Vertical span is stricter — sag from load.</div>
+    <div style="font-size:11px;color:var(--t3);margin-top:6px;line-height:1.6" data-i18n="vertHint">Number of interior mounting rows; top and bottom rows stay fixed.</div>
   </div>
   <div class="panel">
     <div class="ptitle" style="display:flex;align-items:center;justify-content:space-between">
@@ -301,13 +312,16 @@ const I18N = {
     variant:'Module set',
     varHints:['Up to 160mm modules (4×4 cells). Mini print bed.','Up to 240mm modules (6×6 cells). Standard print bed.','Up to 320mm modules (8×8 cells). XL print bed.'],
     width:'Width', height:'Height', mountDensity:'Mount density',
+    densH:'Horiz.', densV:'Rows', rowsVUnit:n=>`${n} ${n===1?'row':'rows'}`,
     sizes:'Panel sizes', sizesClear:'clear',
-    sizesHint:'Click a size to exclude it — the layout will use other modules instead. Click it again to allow it back.',
+    sizesHint:'Click a size to exclude it. Press ☆ to prioritise a size — the layout will try to use it. Click again to undo.',
     sizesEmpty:'No module sizes to exclude yet.',
     szCenter:'Center', szTopbot:'Top & bottom', szSide:'Side',
     szDisable:'Exclude this size', szEnable:'Allow this size again',
+    szPrefer:'Use this size first', szUnprefer:'Remove priority',
+    szPrefWarn:names=>`⚠ Preferred sizes not used in the current layout: ${names}. Try changing density or exclusions.`,
     span:'Span', dense:'Dense', sparse:'Sparse',
-    vertHint:'Vertical span is stricter — sag from load.',
+    vertHint:'Number of interior mounting rows; top and bottom rows stay fixed.',
     total:'Total', allParts:'All parts', modules:'Modules',
     connectors:'Connectors', brackets:'Brackets', mountPts:'mount points',
     mountPtsLabel:n=>n===1?'mount point':'mount points',
@@ -363,13 +377,16 @@ const I18N = {
     variant:'Набор модулей',
     varHints:['Модули до 160 мм (4×4 ячеек). Печатный стол Mini.','Модули до 240 мм (6×6 ячеек). Стандартный печатный стол.','Модули до 320 мм (8×8 ячеек). Печатный стол XL.'],
     width:'Ширина', height:'Высота', mountDensity:'Плотность крепления',
+    densH:'Гориз.', densV:'Ряды', rowsVUnit:n=>`${n} ${pluralRu(n,'ряд','ряда','рядов')}`,
     sizes:'Размеры панелей', sizesClear:'сброс',
-    sizesHint:'Кликните по размеру, чтобы исключить его — раскладка использует другие модули. Кликните снова, чтобы вернуть.',
+    sizesHint:'Кликните по размеру, чтобы исключить его. Нажмите ☆, чтобы сделать размер приоритетным — раскладка постарается его использовать. Повторный клик отменяет.',
     sizesEmpty:'Пока нет размеров для исключения.',
     szCenter:'Центр', szTopbot:'Верх/низ', szSide:'Боковые',
     szDisable:'Исключить этот размер', szEnable:'Снова разрешить этот размер',
+    szPrefer:'Использовать этот размер в первую очередь', szUnprefer:'Снять приоритет',
+    szPrefWarn:names=>`⚠ Приоритетные размеры не помещаются в текущую раскладку: ${names}. Измените плотность или исключения.`,
     span:'Пролёт', dense:'Часто', sparse:'Редко',
-    vertHint:'Вертикаль жёстче горизонтали — провисание от нагрузки.',
+    vertHint:'Число внутренних рядов крепления; верхний и нижний ряды фиксированы.',
     total:'Итого', allParts:'Всего деталей', modules:'Модулей',
     connectors:'Коннекторов', brackets:'Кронштейнов', mountPts:'точек крепления',
     mountPtsLabel:n=>`${pluralRu(n,'точка','точки','точек')} крепления`,
@@ -681,6 +698,9 @@ let EXCL_MODE = 'off'; // 'off' | 'col' | 'row' | 'pt'
 
 // Explicitly excluded panel sizes, keyed "role|wCxhC" (dimensions in cells)
 let EXCL_SIZES = new Set();
+// Preferred panel sizes (use first), same key format
+let PREF_SIZES = new Set();
+
 
 // Filament palette and per-panel paint assignments
 const DEFAULT_PALETTE = ['#e55c25','#e8e6e0','#1a1a1a','#8a8880','#c0392b','#30783a','#2c5090','#d4a017'];
@@ -742,6 +762,18 @@ function loadSizeExclusions(){
     const saved = JSON.parse(localStorage.getItem('skadis-excl-sizes') || '[]');
     EXCL_SIZES = new Set(Array.isArray(saved) ? saved.filter(k => typeof k === 'string') : []);
   } catch(e) { EXCL_SIZES = new Set(); }
+}
+function savePrefSizes(){
+  localStorage.setItem('skadis-pref-sizes', JSON.stringify([...PREF_SIZES]));
+}
+function loadPrefSizes(){
+  try {
+    const saved = JSON.parse(localStorage.getItem('skadis-pref-sizes') || '[]');
+    PREF_SIZES = new Set(Array.isArray(saved)
+      ? saved.filter(k => typeof k === 'string' && /^(std|topbot|side)\|\d+x\d+$/.test(k))
+      : []);
+  } catch(e) { PREF_SIZES = new Set(); }
+  for (const k of [...PREF_SIZES]) if (EXCL_SIZES.has(k)) PREF_SIZES.delete(k);
 }
 
 function setExclMode(m) {
@@ -806,28 +838,151 @@ function balancedPalindromic(k, sum, maxSize) {
   return a;
 }
 
-function pickBounds(total, gap) {
+function prefDimsForAxis(axis) {
+  const dims = new Set();
+  for (const k of PREF_SIZES) {
+    const [role, dim] = k.split('|');
+    const [w, h] = dim.split('x').map(Number);
+    if (w > MAX || h > MAX) continue;
+    if (axis === 'col') {
+      if (role === 'std' || role === 'topbot') dims.add(w);
+    } else {
+      if (role === 'std' || role === 'side') dims.add(h);
+    }
+  }
+  return dims;
+}
+
+function balancedValues(count, sum, maxSize) {
+  if (count === 0) return sum === 0 ? [] : null;
+  if (sum < count || sum > count * maxSize) return null;
+  const a = new Array(count).fill(1);
+  let extra = sum - count;
+  let guard = 0;
+  while (extra > 0 && guard++ < 100000) {
+    let progressed = false;
+    for (let i = 0; i < count && extra > 0; i++) {
+      if (a[i] < maxSize) { a[i]++; extra--; progressed = true; }
+    }
+    if (!progressed) return null;
+  }
+  return a;
+}
+
+// Generate palindromic span sequences that contain every required dimension.
+// Each required size is used as a symmetric pair (or one as the middle), and
+// the remaining spans are a balanced filler.
+function palindromicCandidates(k, sum, maxSize, preferred) {
+  const out = [];
+  const seen = new Set();
+  const add = seq => {
+    if (!seq) return;
+    const key = seq.join(',');
+    if (!seen.has(key)) { seen.add(key); out.push(seq); }
+  };
+  add(balancedPalindromic(k, sum, maxSize));
+
+  const req = [...preferred].filter(d => d >= 1 && d <= maxSize);
+  if (!req.length) return out;
+
+  const middleOptions = [null];
+  if (k % 2 === 1) middleOptions.push(...req);
+
+  for (const mid of middleOptions) {
+    const pairReq = req.filter(d => d !== mid);
+    const used = (mid ? 1 : 0) + 2 * pairReq.length;
+    if (used > k) continue;
+    const budget = k - used;
+    if (budget % 2) continue;
+    const rest = sum - (mid || 0) - 2 * pairReq.reduce((a,b)=>a+b, 0);
+    if (rest < 0 || rest % 2) continue;
+    const fill = balancedValues(budget / 2, rest / 2, maxSize);
+    if (!fill) continue;
+    const left = [...pairReq, ...fill];
+    add([...left, ...(mid ? [mid] : []), ...[...left].reverse()]);
+  }
+  return out;
+}
+
+function isPalindrome(seq) {
+  for (let i = 0, j = seq.length - 1; i < j; i++, j--) {
+    if (seq[i] !== seq[j]) return false;
+  }
+  return true;
+}
+
+// Non-symmetric span sequence that is guaranteed to contain every required
+// dimension at least once. Used when priorities cannot be met symmetrically.
+function arbitrarySpanSeq(k, sum, maxSize, required) {
+  const req = [...new Set(required)].filter(d => d >= 1 && d <= maxSize);
+  if (req.length > k) return null;
+  const seq = [...req];
+  while (seq.length < k) seq.push(1);
+  let extra = sum - seq.reduce((a,b)=>a+b, 0);
+  if (extra < 0) return null;
+  // Required spans stay exactly at their size; distribute the rest evenly
+  // among the remaining spans without exceeding maxSize.
+  let guard = 0;
+  while (extra > 0 && guard++ < 100000) {
+    let idx = -1, min = Infinity;
+    for (let i = req.length; i < seq.length; i++) {
+      if (seq[i] < maxSize && seq[i] < min) { min = seq[i]; idx = i; }
+    }
+    if (idx < 0) return null;
+    seq[idx]++; extra--;
+  }
+  if (extra > 0) return null;
+  return seq;
+}
+
+function pickBounds(total, gap, axis = 'col') {
   const inner = total - 2;
   if (inner <= 0) return [0, total];
 
-  const maxSpan = Math.max(1, gap - 1); // cells between two mounts
-  const kMin = Math.max(1, Math.ceil((inner + 1) / (maxSpan + 1)));
+  const prefDims = prefDimsForAxis(axis);
+  const pref = [...prefDims];
+  // Density is a soft limit when priorities are set: a 200mm panel needs a
+  // 5-cell span even if the selected mount gap is smaller.
+  const prefMax = pref.length ? Math.max(...pref) : 1;
+  const maxSpan = Math.max(1, gap - 1, prefMax); // hard capacity
+  // When priorities exist the density still sets the maximum span; the
+  // clean column grid for ordinary rows is built separately below.
+  const genMax = maxSpan;
+  const kMin = Math.max(1, Math.ceil((inner + 1) / (genMax + 1)));
   const kMax = Math.min(inner, kMin + 12);
 
-  let best = null, bestPieces = Infinity, bestMax = 0;
+  let best = null, bestMissing = Infinity, bestDensity = Infinity, bestAsym = Infinity, bestPieces = Infinity, bestMax = 0;
+  const densityPriority = PREF_SIZES.size > 0;
   for (let k = kMin; k <= kMax; k++) {
     const spanSum = inner - (k - 1);
     if (spanSum < k) break;
-    const sizes = balancedPalindromic(k, spanSum, maxSpan);
-    if (!sizes) continue;
-    let pieces = k - 1; // mount cells
-    let maxPanel = 0;
-    for (const s of sizes) {
-      pieces += Math.ceil(s / MAX);
-      maxPanel = Math.max(maxPanel, Math.min(s, MAX));
+    const candidates = palindromicCandidates(k, spanSum, genMax, prefDims);
+    // If a priority cannot be met symmetrically, allow a non-symmetric grid.
+    if (pref.length) {
+      const arbitrary = arbitrarySpanSeq(k, spanSum, genMax, pref);
+      if (arbitrary) candidates.push(arbitrary);
     }
-    if (pieces < bestPieces || (pieces === bestPieces && maxPanel > bestMax)) {
-      bestPieces = pieces; bestMax = maxPanel; best = sizes;
+    for (const sizes of candidates) {
+      let pieces = k - 1; // mount cells
+      let maxPanel = 0;
+      for (const s of sizes) {
+        pieces += Math.ceil(s / MAX);
+        maxPanel = Math.max(maxPanel, Math.min(s, MAX));
+      }
+      let missing = 0;
+      for (const d of prefDims) if (!sizes.includes(d)) missing++;
+      const asym = isPalindrome(sizes) ? 0 : 1;
+      const densityCost = densityPriority
+        ? sizes.reduce((a,s) => a + (genMax - s) * (genMax - s), 0)
+        : 0;
+      if (missing < bestMissing ||
+          (missing === bestMissing && (densityCost < bestDensity ||
+           (densityCost === bestDensity && (asym < bestAsym ||
+            (asym === bestAsym && (pieces < bestPieces ||
+             (pieces === bestPieces && maxPanel > bestMax)))))))) {
+        bestMissing = missing; bestDensity = densityCost; bestAsym = asym;
+        bestPieces = pieces; bestMax = maxPanel; best = sizes;
+      }
     }
   }
   if (!best) {
@@ -844,9 +999,22 @@ function pickBounds(total, gap) {
   return [...s].sort((a,b)=>a-b);
 }
 
-function computeMountPts(wC, hC, gapH, gapV) {
-  const xPts = pickBounds(wC, gapH);
-  const yPts = pickBounds(hC, gapV);
+function maxVerticalRows(total) {
+  // Keep at least 120 mm between mounting rows, including the fixed edge rows.
+  return Math.max(0, Math.floor(total / 3) - 1);
+}
+
+function pickVerticalRows(total, count) {
+  const rows = Math.max(0, Math.min(maxVerticalRows(total), Math.round(count)));
+  const pts = [0];
+  for (let i = 1; i <= rows; i++) pts.push(Math.round(i * total / (rows + 1)));
+  pts.push(total);
+  return pts;
+}
+
+function computeMountPts(wC, hC, gapH, rowsV) {
+  const xPts = pickBounds(wC, gapH, 'col');
+  const yPts = pickVerticalRows(hC, rowsV);
   // Drop stale exclusions (positions no longer present after density / size change)
   for (const v of [...EXCL.x]) if (!xPts.includes(v)) EXCL.x.delete(v);
   for (const v of [...EXCL.y]) if (!yPts.includes(v)) EXCL.y.delete(v);
@@ -876,6 +1044,12 @@ function computeMountPts(wC, hC, gapH, gapV) {
     pts.push({x,y,key});
   }
   return {pts, xPts, yPts};
+}
+
+function largestGap(points) {
+  let gap = 0;
+  for (let i = 1; i < points.length; i++) gap = Math.max(gap, points[i] - points[i-1]);
+  return gap;
 }
 
 // ═══════════════════════════════════════════════════════════════
@@ -939,6 +1113,18 @@ function costForSpans(spans, allowed) {
 // Pick the column and row size sets. Borders use the same sets as the center
 // so vertical/horizontal seams stay aligned across the whole board. The search
 // minimises the total number of modules while avoiding excluded panel sizes.
+function prefUnmet(colSet, rowSet) {
+  let missing = 0;
+  for (const k of PREF_SIZES) {
+    const [role, dim] = k.split('|');
+    const [w, h] = dim.split('x').map(Number);
+    if (role === 'std' && (!colSet.has(w) || !rowSet.has(h))) missing++;
+    else if (role === 'topbot' && !colSet.has(w)) missing++;
+    else if (role === 'side' && !rowSet.has(h)) missing++;
+  }
+  return missing;
+}
+
 function bestAxisMasks(spans) {
   const limit = 1 << MAX;
   const cols = [], rows = [];
@@ -976,7 +1162,8 @@ function bestAxisMasks(spans) {
       if (bad) break;
     }
     if (bad) continue;
-    const score = cm.colCost * rm.rowCost + cm.edgeCost + rm.edgeCost;
+    const missing = prefUnmet(new Set(cm.allowed), new Set(rm.allowed));
+    const score = missing * 1000000 + cm.colCost * rm.rowCost + cm.edgeCost + rm.edgeCost;
     const cmax = cm.allowed[cm.allowed.length-1];
     const rmax = rm.allowed[rm.allowed.length-1];
     const count = cm.count + rm.count;
@@ -1091,21 +1278,28 @@ function segsWithAllowed(total, mountPositions, allowed) {
   const breaks = forcedBreaks(total, mountPositions);
   const n = breaks.length - 1;
   const pieces = new Array(n);
+  const symmetric = breaks.every((b, i) => b === total - breaks[n - i]);
 
-  // Mirror span pairs so the whole axis is symmetric. The central span (if any)
-  // mirrors onto itself, so it must use a palindromic tiling.
-  for (let i = 0; i < n; i++) {
-    const j = n - 1 - i;
-    if (i > j) break;
-    const spanI = breaks[i+1] - breaks[i];
-    const spanJ = breaks[j+1] - breaks[j];
-    if (i === j) {
-      pieces[i] = palTile(spanI, allowed);
-    } else {
-      const t = tileSpan(spanI, allowed);
-      pieces[i] = t;
-      if (spanI === spanJ) pieces[j] = [...t].reverse();
-      else pieces[j] = tileSpan(spanJ, allowed);
+  // Mirror span pairs when the mount grid is symmetric. If priorities forced
+  // an asymmetric grid, tile every span independently instead.
+  if (symmetric) {
+    for (let i = 0; i < n; i++) {
+      const j = n - 1 - i;
+      if (i > j) break;
+      const spanI = breaks[i+1] - breaks[i];
+      const spanJ = breaks[j+1] - breaks[j];
+      if (i === j) {
+        pieces[i] = palTile(spanI, allowed);
+      } else {
+        const t = tileSpan(spanI, allowed);
+        pieces[i] = t;
+        if (spanI === spanJ) pieces[j] = [...t].reverse();
+        else pieces[j] = tileSpan(spanJ, allowed);
+      }
+    }
+  } else {
+    for (let i = 0; i < n; i++) {
+      pieces[i] = tileSpan(breaks[i+1] - breaks[i], allowed);
     }
   }
 
@@ -1143,8 +1337,10 @@ function computeLayout(wC, hC, pts) {
   const rightMt = iH > 0 ? borderMtInner(pts,'right', wC,hC,iH) : [];
   const topMt   = iW > 0 ? borderMtInner(pts,'top',    wC,hC,iW) : [];
   const botMt   = iW > 0 ? borderMtInner(pts,'bottom', wC,hC,iW) : [];
-  const innerX  = (iW > 0 && iH > 0) ? pts.filter(p=>p.x>0&&p.x<wC&&p.y>0&&p.y<hC).map(p=>p.x-1) : [];
-  const innerY  = (iW > 0 && iH > 0) ? pts.filter(p=>p.x>0&&p.x<wC&&p.y>0&&p.y<hC).map(p=>p.y-1) : [];
+  // Keep center cuts aligned with border mount points too. This matters when
+  // the selected vertical row count is zero and there are no interior mounts.
+  const innerX  = (iW > 0 && iH > 0) ? [...new Set(pts.filter(p=>p.x>0&&p.x<wC).map(p=>p.x-1))] : [];
+  const innerY  = (iW > 0 && iH > 0) ? [...new Set(pts.filter(p=>p.y>0&&p.y<hC).map(p=>p.y-1))] : [];
 
   // Choose column / row size sets that avoid excluded panel sizes.
   // Borders share the center sets so seams line up across the whole board.
@@ -1204,11 +1400,13 @@ function computeLayout(wC, hC, pts) {
 
   // ── CENTER — mid board mount (пл.04) OR standard module (пл.01–16)
   if (iW > 0 && iH > 0) {
+    // Keep one shared grid across every center row and column. Local row tiling
+    // and panel merging make seams stop at row boundaries and remove joins.
     const colSegs = segsWithAllowed(iW, innerX, colAllowed);
     const rowSegs = segsWithAllowed(iH, innerY, rowAllowed);
     for (const rs of rowSegs) for (const cs of colSegs) {
-      const isMount = innerX.includes(cs.start) && cs.size===1 &&
-                      innerY.includes(rs.start) && rs.size===1;
+      const isMount = innerX.includes(cs.start) && cs.size === 1 &&
+                      innerY.includes(rs.start) && rs.size === 1;
       mods.push({x:1+cs.start, y:1+rs.start, wC:cs.size, hC:rs.size,
         role: isMount ? 'mount' : 'std', mountKey: isMount ? 'mid' : null});
     }
@@ -1454,14 +1652,35 @@ function renderExclusions(xPts, yPts, D) {
 // ═══════════════════════════════════════════════════════════════
 function toggleSize(role, wC, hC) {
   const k = sizeKey(role, wC, hC);
-  if (EXCL_SIZES.has(k)) EXCL_SIZES.delete(k); else EXCL_SIZES.add(k);
+  if (EXCL_SIZES.has(k)) {
+    EXCL_SIZES.delete(k);
+  } else {
+    EXCL_SIZES.add(k);
+    PREF_SIZES.delete(k);
+    savePrefSizes();
+  }
   saveSizeExclusions();
+  go();
+}
+
+function togglePreferredSize(role, wC, hC) {
+  const k = sizeKey(role, wC, hC);
+  if (PREF_SIZES.has(k)) {
+    PREF_SIZES.delete(k);
+  } else {
+    PREF_SIZES.add(k);
+    EXCL_SIZES.delete(k);
+    saveSizeExclusions();
+  }
+  savePrefSizes();
   go();
 }
 
 function clearSizeExclusions() {
   EXCL_SIZES.clear();
+  PREF_SIZES.clear();
   saveSizeExclusions();
+  savePrefSizes();
   go();
 }
 
@@ -1469,38 +1688,56 @@ function renderSizeExclusions(lay) {
   const list = document.getElementById('sizeList');
   const clr  = document.getElementById('sizesClear');
   if (!list) return;
-  clr.style.display = EXCL_SIZES.size ? 'inline-block' : 'none';
+  const scrollTop = (list.querySelector('.szscroll') || {}).scrollTop || 0;
+  clr.style.display = (EXCL_SIZES.size || PREF_SIZES.size) ? 'inline-block' : 'none';
 
-  // Sizes currently used in the layout + sizes the user has excluded
-  const groups = {std:new Set(), topbot:new Set(), side:new Set()};
-  for (const m of lay.mods) {
-    if (m.role === 'std' || m.role === 'topbot' || m.role === 'side') {
-      groups[m.role].add(`${m.wC}x${m.hC}`);
-    }
+  // Every size available for the current module set, so a size can be starred
+  // even when the current layout does not use it yet.
+  const groups = {std:[], topbot:[], side:[]};
+  for (let w = 1; w <= MAX; w++) for (let h = 1; h <= MAX; h++) {
+    if (w === 1 && h === 1) continue;
+    groups.std.push({wc:w, hc:h});
   }
-  for (const key of EXCL_SIZES) {
-    const [role, dim] = key.split('|');
-    const [wc, hc] = dim.split('x').map(Number);
-    if (groups[role] && wc <= MAX && hc <= MAX) groups[role].add(dim);
-  }
+  for (let w = 2; w <= MAX; w++) groups.topbot.push({wc:w, hc:1});
+  for (let h = 2; h <= MAX; h++) groups.side.push({wc:1, hc:h});
 
   const labels = {std:t('szCenter'), topbot:t('szTopbot'), side:t('szSide')};
   let h = '';
   for (const role of ['std','topbot','side']) {
-    const dims = [...groups[role]]
-      .map(d => { const [wc,hc] = d.split('x').map(Number); return {wc,hc}; })
-      .filter(o => !(o.wc === 1 && o.hc === 1))
+    const dims = groups[role]
       .sort((a,z) => z.wc*z.hc - a.wc*a.hc || z.wc - a.wc || z.hc - a.hc);
     if (!dims.length) continue;
     h += `<div class="szsec">${labels[role]}</div><div class="szchips">`;
     for (const o of dims) {
-      const excluded = EXCL_SIZES.has(sizeKey(role, o.wc, o.hc));
+      const key = sizeKey(role, o.wc, o.hc);
+      const excluded = EXCL_SIZES.has(key);
+      const preferred = PREF_SIZES.has(key);
       const title = excluded ? t('szEnable') : t('szDisable');
-      h += `<button class="szchip${excluded?' off':''}" title="${title}" onclick="toggleSize('${role}',${o.wc},${o.hc})">${o.wc*S}×${o.hc*S} ${t('mm')}</button>`;
+      const starTitle = preferred ? t('szUnprefer') : t('szPrefer');
+      h += `<span class="szitem">` +
+        `<button class="szstar${preferred?' on':''}" title="${starTitle}" onclick="togglePreferredSize('${role}',${o.wc},${o.hc})">${preferred?'★':'☆'}</button>` +
+        `<button class="szchip${excluded?' off':''}${preferred?' pref':''}" title="${title}" onclick="toggleSize('${role}',${o.wc},${o.hc})">${o.wc*S}×${o.hc*S} ${t('mm')}</button>` +
+        `</span>`;
     }
     h += `</div>`;
   }
-  list.innerHTML = h || `<div style="color:var(--t3);font-size:11px;line-height:1.5">${t('sizesEmpty')}</div>`;
+
+  // Warn if a preferred size cannot be produced by the current layout
+  const missing = [];
+  for (const key of PREF_SIZES) {
+    const [role, dim] = key.split('|');
+    const [wc, hc] = dim.split('x').map(Number);
+    if (!lay.mods.some(m => m.role === role && m.wC === wc && m.hC === hc)) {
+      missing.push(`${wc*S}×${hc*S} ${t('mm')}`);
+    }
+  }
+  const warn = missing.length
+    ? `<div class="szwarn">${t('szPrefWarn', missing.join(', '))}</div>`
+    : '';
+
+  list.innerHTML = `<div class="szscroll">${h}</div>${warn}`;
+  const sc = list.querySelector('.szscroll');
+  if (sc) sc.scrollTop = scrollTop;
 }
 
 // ═══════════════════════════════════════════════════════════════
@@ -1760,7 +1997,8 @@ function cfgMsg(msg, isErr = false) {
 function exportConfig() {
   const wsEl = document.getElementById('ws');
   const hsEl = document.getElementById('hs');
-  const densEl = document.getElementById('dens');
+  const gaphEl = document.getElementById('gaph');
+  const rowsVEl = document.getElementById('rowsv');
   const cfg = {
     app: 'skadis-3.0-planner',
     version: 1,
@@ -1768,13 +2006,15 @@ function exportConfig() {
     variant: VARK,
     widthCells: +wsEl.value,
     heightCells: +hsEl.value,
-    density: +densEl.value,
+    gapH: +gaphEl.value,
+    verticalRows: +rowsVEl.value,
     mountExclusions: {
       columns: [...EXCL.x].sort((a,b)=>a-b),
       rows: [...EXCL.y].sort((a,b)=>a-b),
       points: [...EXCL.p].sort()
     },
-    sizeExclusions: [...EXCL_SIZES].sort()
+    sizeExclusions: [...EXCL_SIZES].sort(),
+    preferredSizes: [...PREF_SIZES].sort()
   };
   cfg.colors = {
     palette: [...FILAMENT_PALETTE],
@@ -1815,22 +2055,34 @@ function importConfig(ev) {
 function applyConfig(cfg) {
   const wsEl = document.getElementById('ws');
   const hsEl = document.getElementById('hs');
-  const densEl = document.getElementById('dens');
+  const gaphEl = document.getElementById('gaph');
+  const rowsVEl = document.getElementById('rowsv');
   const toInt = (v, min, max, def) => {
     const n = Math.round(Number(v));
     return Number.isFinite(n) ? Math.max(min, Math.min(max, n)) : def;
   };
+  const oldGap = (v, axis, def) => {
+    if (v == null) return def;
+    const i = Math.max(1, Math.min(5, Math.round(Number(v)))) - 1;
+    return axis === 'h' ? DENS[i].h : DENS[i].v;
+  };
 
   const width   = toInt(cfg.widthCells,  +wsEl.min,  +wsEl.max,  +wsEl.value);
   const height  = toInt(cfg.heightCells, +hsEl.min,  +hsEl.max,  +hsEl.value);
-  const density = toInt(cfg.density ?? cfg.mountDensity, +densEl.min, +densEl.max, +densEl.value);
+  const legacyDensity = cfg.density ?? cfg.mountDensity;
+  const gapH = cfg.gapH != null
+    ? toInt(cfg.gapH, +gaphEl.min, +gaphEl.max, +gaphEl.value)
+    : oldGap(cfg.densityH ?? legacyDensity, 'h', +gaphEl.value);
+  const legacyGapV = cfg.gapV != null
+    ? toInt(cfg.gapV, 3, 15, 5)
+    : oldGap(cfg.densityV ?? legacyDensity, 'v', 5);
 
   if (['mini','standard','xl'].includes(cfg.variant) && cfg.variant !== VARK) {
     setVariant(cfg.variant);
   }
   wsEl.value = width;
   hsEl.value = height;
-  densEl.value = density;
+  gaphEl.value = gapH;
 
   const me = (cfg.mountExclusions && typeof cfg.mountExclusions === 'object') ? cfg.mountExclusions : {};
   const numList = v => Array.isArray(v)
@@ -1845,6 +2097,17 @@ function applyConfig(cfg) {
     (Array.isArray(cfg.sizeExclusions) ? cfg.sizeExclusions : [])
       .filter(k => typeof k === 'string' && /^(std|topbot|side)\|\d+x\d+$/.test(k))
   );
+  PREF_SIZES = new Set(
+    (Array.isArray(cfg.preferredSizes) ? cfg.preferredSizes : [])
+      .filter(k => typeof k === 'string' && /^(std|topbot|side)\|\d+x\d+$/.test(k))
+  );
+  for (const k of [...PREF_SIZES]) if (EXCL_SIZES.has(k)) PREF_SIZES.delete(k);
+  const maxRows = maxVerticalRows(height);
+  const verticalRows = cfg.verticalRows != null
+    ? toInt(cfg.verticalRows, 0, maxRows, 0)
+    : Math.max(0, Math.min(maxRows, pickBounds(height, legacyGapV, 'row').length - 2));
+  rowsVEl.max = maxRows;
+  rowsVEl.value = verticalRows;
 
   const cc = (cfg.colors && typeof cfg.colors === 'object' && !Array.isArray(cfg.colors)) ? cfg.colors : {};
   const pal = Array.isArray(cc.palette) ? cc.palette.filter(isHexColor).map(c => c.toLowerCase()) : [];
@@ -1867,6 +2130,7 @@ function applyConfig(cfg) {
 
   saveExclusions();
   saveSizeExclusions();
+  savePrefSizes();
   go();
   cfgMsg(t('cfgImported', width, height));
 }
@@ -2345,20 +2609,27 @@ function showTab(name){
 
 function go(){
   const wC=+document.getElementById('ws').value,hC=+document.getElementById('hs').value;
-  const di=+document.getElementById('dens').value-1;
+  const gapH=+document.getElementById('gaph').value;
+  const rowsVEl=document.getElementById('rowsv');
+  const maxRows=maxVerticalRows(hC);
+  rowsVEl.max=maxRows;
+  rowsVEl.value=Math.max(0,Math.min(maxRows,+rowsVEl.value||0));
+  const rowsV=+rowsVEl.value;
   localStorage.setItem('skadis-width', wC);
   localStorage.setItem('skadis-height', hC);
-  localStorage.setItem('skadis-density', di+1);
-  const D=DENS[di];
+  localStorage.setItem('skadis-gap-h', gapH);
+  localStorage.setItem('skadis-rows-v', rowsV);
 
   document.getElementById('wv').textContent=fmt(wC*S);
   document.getElementById('hv').textContent=fmt(hC*S);
   document.getElementById('wh').textContent=`${wC} ${t('cells')} · ${fmt(wC*S)}`;
   document.getElementById('hh').textContent=`${hC} ${t('cells')} · ${fmt(hC*S)}`;
-  document.getElementById('dv').textContent=t('densNames')[di];
-  document.getElementById('di').textContent=`↔ ${D.h*S} ${t('mm')}  ↕ ${D.v*S} ${t('mm')}`;
+  document.getElementById('ghv').textContent=`${gapH*S} ${t('mm')}`;
+  document.getElementById('gvv').textContent=t('rowsVUnit', rowsV);
 
-  const mp  = computeMountPts(wC,hC,D.h,D.v);
+  const mp  = computeMountPts(wC,hC,gapH,rowsV);
+  const D={h:gapH, v:largestGap(mp.yPts)};
+  document.getElementById('di').textContent=`↔ ${gapH*S} ${t('mm')}  ↕ ${t('rowsVUnit', rowsV)}`;
   const pts = mp.pts;
   const lay = computeLayout(wC,hC,pts);
   const b   = computeBOM(lay,pts);
@@ -2398,15 +2669,33 @@ document.documentElement.lang = LANG;
 const _sw = localStorage.getItem('skadis-width');
 const _sh = localStorage.getItem('skadis-height');
 const _sd = localStorage.getItem('skadis-density');
+const _sdh = localStorage.getItem('skadis-density-h') || _sd;
+const _sdv = localStorage.getItem('skadis-density-v') || _sd;
+const _savedRowsV = localStorage.getItem('skadis-rows-v');
+const oldDensityToGap = (v, axis) => {
+  const i = Math.max(1, Math.min(5, Math.round(+v))) - 1;
+  return axis === 'h' ? DENS[i].h : DENS[i].v;
+};
 if (_sw) document.getElementById('ws').value = _sw;
 if (_sh) document.getElementById('hs').value = _sh;
-if (_sd) document.getElementById('dens').value = _sd;
+const _gh = localStorage.getItem('skadis-gap-h');
+const _legacyGapV = localStorage.getItem('skadis-gap-v');
+if (_gh) document.getElementById('gaph').value = _gh;
+else if (_sdh) document.getElementById('gaph').value = oldDensityToGap(_sdh, 'h');
 
 loadExclusions();
 loadSizeExclusions();
+loadPrefSizes();
 loadColors();
 applyI18n();
 setVariant(localStorage.getItem('skadis-variant') || 'mini');
+if (_savedRowsV != null) {
+  document.getElementById('rowsv').value = _savedRowsV;
+} else if (_legacyGapV || _sdv) {
+  const gap = _legacyGapV ? +_legacyGapV : oldDensityToGap(_sdv, 'v');
+  document.getElementById('rowsv').value = Math.max(0, pickBounds(+document.getElementById('hs').value, gap, 'row').length - 2);
+}
+go();
 setExclMode('off');
 let _resizeTimer;
 window.addEventListener('resize',()=>{clearTimeout(_resizeTimer);_resizeTimer=setTimeout(go,150);});
